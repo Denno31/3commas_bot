@@ -240,5 +240,12 @@ class CryptoRebalancer:
             self.executor.shutdown()
 
 if __name__ == "__main__":
-    rebalancer = CryptoRebalancer()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Crypto Rebalancing Bot')
+    parser.add_argument('--config', type=str, default='config.yaml',
+                      help='Path to configuration file')
+    args = parser.parse_args()
+    
+    rebalancer = CryptoRebalancer(args.config)
     rebalancer.run()

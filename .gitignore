@@ -1,5 +1,6 @@
 # Configuration files with sensitive data
 config.yaml
+config.local.yaml
 
 # Python
 __pycache__/

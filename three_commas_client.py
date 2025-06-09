@@ -42,29 +42,46 @@ class ThreeCommasClient:
         """Get current market prices for the given pairs."""
         prices = {}
         
-        for pair in pairs:
-            try:
-                error, data = self.client.request(
-                    entity='marketplace',
-                    action='currency_rates',
-                    payload={
-                        'market_code': pair
-                    }
-                )
-                
-                if error:
-                    logger.error(f"Error getting market price for {pair}: {error}")
+        try:
+            # Get all market pairs first
+            error, data = self.client.request(
+                entity='accounts',
+                action='market_list',
+                payload={}
+            )
+            
+            if error:
+                logger.error(f"Error getting market list: {error}")
+                return prices
+            
+            # Now get prices for each pair
+            for pair in pairs:
+                try:
+                    error, pair_data = self.client.request(
+                        entity='accounts',
+                        action='market_prices',
+                        payload={
+                            'market_code': pair.replace('_', '')
+                        }
+                    )
+                    
+                    if error:
+                        logger.error(f"Error getting price for {pair}: {error}")
+                        continue
+                        
+                    if pair_data and isinstance(pair_data, dict):
+                        last_price = pair_data.get('last_price')
+                        if last_price:
+                            prices[pair] = float(last_price)
+                            logger.info(f"Got price for {pair}: {last_price}")
+                            
+                except Exception as e:
+                    logger.error(f"Error processing {pair}: {e}")
                     continue
                     
-                if data and len(data) > 0:
-                    price = float(data[0].get('last', 0))
-                    if price > 0:
-                        prices[pair] = price
-                        
-            except Exception as e:
-                logger.error(f"Error processing {pair}: {e}")
-                continue
-                
+        except Exception as e:
+            logger.error(f"Error fetching market data: {e}")
+            
         return prices
 
     def create_smart_trade(self, account_id: str, from_coin: str, to_coin: str, 
