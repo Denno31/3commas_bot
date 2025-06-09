@@ -1,0 +1,51 @@
+# 3Commas API Configuration
+3commas:
+  api_key: "YOUR_3COMMAS_API_KEY"  # Get this from 3Commas API section
+  api_secret: "YOUR_3COMMAS_API_SECRET"  # Get this from 3Commas API section
+  mode: "paper"  # Options: paper, real (start with paper trading)
+
+# Bot Configurations
+bots:
+  - name: "Bot 1"  # Give your bot a meaningful name
+    enabled: true  # Set to false to disable this bot
+    coins:  # List of trading pairs to monitor
+      - BTCUSDT
+      - ETHUSDT
+      - SOLUSDT
+      - BNBUSDT
+      - ADAUSDT
+    threshold_percentage: 10  # Minimum price difference to trigger a trade
+    check_interval: 5  # Minutes between price checks
+    initial_coin: "BTCUSDT"  # Starting trading pair
+    account_id: "YOUR_3COMMAS_ACCOUNT_ID"  # Get this from 3Commas account page
+
+  - name: "Bot 2"
+    enabled: false  # Example of a disabled bot
+    coins:
+      - BTCUSDT
+      - DOTUSDT
+      - LINKUSDT
+      - MATICUSDT
+      - AVAXUSDT
+    threshold_percentage: 15
+    check_interval: 10
+    initial_coin: "BTCUSDT"
+    account_id: "YOUR_3COMMAS_ACCOUNT_ID"
+
+# Data storage configuration
+storage:
+  type: "json"  # Data storage format
+  state_dir: "data/bot_states"  # Directory for bot state files
+  analytics_dir: "data/analytics"  # Directory for performance data
+
+# Price data configuration
+pricing:
+  source: "3commas"  # Primary price data source
+  fallback_source: "coingecko"  # Backup price source
+  update_interval: 1  # Minutes between price updates
+  websocket_enabled: true  # Enable real-time price updates
+
+# Analytics configuration
+analytics:
+  enabled: true  # Enable/disable analytics
+  save_interval: 60  # Minutes between analytics saves
