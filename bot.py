@@ -1,5 +1,4 @@
 import os
-import json
 import time
 import yaml
 import schedule
@@ -8,24 +7,37 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from loguru import logger
 from concurrent.futures import ThreadPoolExecutor
+from sqlalchemy.orm import Session
 from three_commas_client import ThreeCommasClient
+from coingecko_client import CoinGeckoClient
 from analytics import BotAnalytics
+from api.database import SessionLocal, Bot as DBBot, PriceHistory, Trade, ApiConfig, SystemConfig
 
 class Bot:
-    def __init__(self, name: str, config: Dict, three_commas: ThreeCommasClient):
-        """Initialize an individual trading bot instance."""
-        self.name = name
-        self.config = config
+    def __init__(self, db_bot: DBBot, three_commas: ThreeCommasClient, coingecko: CoinGeckoClient, db: Session):
+        """Initialize an individual trading bot instance from database model."""
+        self.db = db
+        self.coingecko = coingecko
         self.three_commas = three_commas
-        self.enabled = config['enabled']
-        self.coins = config['coins']
-        self.threshold = config['threshold_percentage'] / 100
-        self.check_interval = config['check_interval']
-        self.account_id = config['account_id']
-        self.current_coin = config.get('initial_coin')
-        self.last_prices = {}
-        self.last_check_time = None
-        self.active_trade_id = None
+        
+        # Map database fields
+        self.name = db_bot.name
+        self.enabled = db_bot.enabled
+        self.coins = db_bot.coins.split(',')
+        self.threshold = db_bot.threshold_percentage / 100
+        self.check_interval = db_bot.check_interval
+        self.account_id = db_bot.account_id
+        self.current_coin = db_bot.current_coin or db_bot.initial_coin
+        self.last_check_time = db_bot.last_check_time
+        self.active_trade_id = db_bot.active_trade_id
+        self.db_bot = db_bot  # Keep reference to db model
+        
+        # Get latest prices
+        latest_prices = db.query(PriceHistory).filter(
+            PriceHistory.bot_id == db_bot.id
+        ).order_by(PriceHistory.timestamp.desc()).limit(len(self.coins)).all()
+        
+        self.last_prices = {p.coin: p.price for p in latest_prices}
 
     def should_check(self) -> bool:
         """Determine if it's time to check prices."""
@@ -35,9 +47,25 @@ class Bot:
         return elapsed >= (self.check_interval * 60)
 
     def update_prices(self, prices: Dict[str, float]) -> None:
-        """Update current prices."""
+        """Update current prices in database."""
+        current_time = datetime.utcnow()
+        
+        # Update bot's last check time
+        self.last_check_time = current_time
+        self.db_bot.last_check_time = current_time
+        
+        # Store prices in history
+        for coin, price in prices.items():
+            price_history = PriceHistory(
+                bot_id=self.db_bot.id,
+                coin=coin,
+                price=price,
+                timestamp=current_time
+            )
+            self.db.add(price_history)
+        
         self.last_prices = prices
-        self.last_check_time = datetime.utcnow()
+        self.db.commit()
 
     def calculate_changes(self, current_prices: Dict[str, float]) -> Dict[str, float]:
         """Calculate price changes for all coins relative to current holding."""
@@ -58,6 +86,39 @@ class Bot:
 
         return changes
 
+    def should_swap(self, price_changes: Dict[str, float]) -> Optional[str]:
+        """Determine if we should swap to a different coin based on price changes."""
+        current_coin = self.current_coin
+        if not current_coin:
+            return None
+            
+        # Find coin with highest price increase
+        best_coin = None
+        best_change = float('-inf')
+        current_change = price_changes.get(current_coin, 0)
+        
+        logger.info(f"Current coin {current_coin} change: {current_change:.2f}%")
+        
+        for coin, change in price_changes.items():
+            logger.info(f"Checking {coin}: {change:.2f}% change")
+            if coin != current_coin and change > best_change:
+                best_coin = coin
+                best_change = change
+                logger.info(f"New best coin: {coin} with {change:.2f}% change")
+                
+        # Check if the price difference exceeds threshold
+        if best_coin:
+            price_difference = best_change - current_change
+            logger.info(f"Price difference: {price_difference:.2f}% (threshold: {self.threshold}%)")
+            
+            if price_difference > self.threshold:
+                logger.info(f"Swap triggered: {current_coin} -> {best_coin} ({price_difference:.2f}% > {self.threshold}%)")
+                return best_coin
+            else:
+                logger.info(f"No swap: difference {price_difference:.2f}% below threshold {self.threshold}%")
+                
+        return None
+
     def find_best_swap(self, changes: Dict[str, float]) -> Optional[str]:
         """Find the best coin to swap to if threshold is met."""
         best_coin = None
@@ -73,30 +134,24 @@ class Bot:
 class CryptoRebalancer:
     def __init__(self, config_path: str = "config.yaml"):
         """Initialize the multi-bot rebalancing system."""
-        self.load_config(config_path)
+        self.db = SessionLocal()
         self.setup_logging()
-        self.setup_storage()
-        
-        # Initialize 3Commas client
-        self.three_commas = ThreeCommasClient(
-            api_key=self.config['3commas']['api_key'],
-            api_secret=self.config['3commas']['api_secret'],
-            mode=self.config['3commas']['mode']
-        )
-        
-        # Initialize bots
-        self.bots = {}
+        self.load_api_config()
         self.setup_bots()
-        
-        # Initialize analytics
-        self.analytics = {}
         self.setup_analytics()
-        
-        # Thread pool for parallel bot execution
         self.executor = ThreadPoolExecutor(max_workers=10)
         
+        # Initialize API clients
+        threec_config = self.config['3commas']
+        self.three_commas = ThreeCommasClient(
+            api_key=threec_config['api_key'],
+            api_secret=threec_config['api_secret'],
+            mode=threec_config['mode']
+        )
+        self.coingecko = CoinGeckoClient()
+        
         # Ensure required directories exist
-        for dir_path in ['data', 'logs', 'data/bot_states', 'data/analytics']:
+        for dir_path in ['data', 'logs', 'data/analytics']:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
 
     def load_config(self, config_path: str) -> None:
@@ -104,57 +159,68 @@ class CryptoRebalancer:
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
 
+    def load_api_config(self) -> None:
+        """Load API configuration from database."""
+        api_config = self.db.query(ApiConfig).filter_by(name='3commas').first()
+        if not api_config:
+            raise ValueError("3commas API configuration not found in database")
+            
+        self.config = {
+            '3commas': {
+                'api_key': api_config.api_key,
+                'api_secret': api_config.api_secret,
+                'mode': api_config.mode
+            }
+        }
+
     def setup_logging(self) -> None:
         """Configure logging with rotation."""
-        log_config = self.config.get('logging', {})
         logger.add(
-            log_config.get('file', 'logs/bot.log'),
-            rotation=log_config.get('max_size', '10 MB'),
-            retention=log_config.get('backup_count', 5),
-            level=log_config.get('level', 'INFO')
+            'logs/bot.log',
+            rotation='1 day',
+            retention='7 days',
+            level='INFO'
         )
 
-    def setup_storage(self) -> None:
-        """Initialize storage directories."""
-        self.state_dir = Path(self.config['storage']['state_dir'])
-        self.state_dir.mkdir(parents=True, exist_ok=True)
-
     def setup_bots(self) -> None:
-        """Initialize bot instances from configuration."""
-        for bot_config in self.config['bots']:
-            name = bot_config['name']
-            if bot_config['enabled']:
-                self.bots[name] = Bot(name, bot_config, self.three_commas)
-                logger.info(f"Initialized bot: {name}")
+        """Initialize bot instances from database."""
+        threec_config = self.config['3commas']
+        three_commas = ThreeCommasClient(
+            api_key=threec_config['api_key'],
+            api_secret=threec_config['api_secret'],
+            mode=threec_config['mode']
+        )
+        coingecko = CoinGeckoClient()
+
+        self.bots = {}
+        db_bots = self.db.query(DBBot).all()
+        for db_bot in db_bots:
+            self.bots[db_bot.name] = Bot(db_bot, three_commas, coingecko, self.db)
+            logger.info(f"Initialized bot: {db_bot.name}")
 
     def setup_analytics(self) -> None:
         """Initialize analytics for each bot."""
-        analytics_dir = self.config['storage']['analytics_dir']
+        analytics_dir = Path('data/analytics')
+        analytics_dir.mkdir(parents=True, exist_ok=True)
+        self.analytics = {}
         for bot_name in self.bots:
             self.analytics[bot_name] = BotAnalytics(bot_name, analytics_dir)
 
     def load_bot_state(self, bot_name: str) -> None:
-        """Load state for a specific bot."""
-        state_file = self.state_dir / f"{bot_name}_state.json"
-        if state_file.exists():
-            with open(state_file, 'r') as f:
-                state = json.load(f)
-                self.bots[bot_name].current_coin = state.get('current_coin')
-                self.bots[bot_name].last_prices = state.get('last_prices', {})
-                self.bots[bot_name].last_check_time = datetime.fromisoformat(
-                    state['last_check_time']) if state.get('last_check_time') else None
+        """Load state for a specific bot - no longer needed as state is in DB."""
+        pass
 
     def save_bot_state(self, bot_name: str) -> None:
-        """Save state for a specific bot."""
+        """Save state for a specific bot to database."""
         bot = self.bots[bot_name]
-        state = {
-            'current_coin': bot.current_coin,
-            'last_prices': bot.last_prices,
-            'last_check_time': bot.last_check_time.isoformat() if bot.last_check_time else None
-        }
-        state_file = self.state_dir / f"{bot_name}_state.json"
-        with open(state_file, 'w') as f:
-            json.dump(state, f, indent=2)
+        db_bot = bot.db_bot
+        
+        # Update database model
+        db_bot.current_coin = bot.current_coin
+        db_bot.last_check_time = bot.last_check_time
+        db_bot.active_trade_id = bot.active_trade_id
+        
+        self.db.commit()
 
     def check_and_rebalance_bot(self, bot_name: str) -> None:
         """Main rebalancing logic for a single bot."""
@@ -165,7 +231,7 @@ class CryptoRebalancer:
                 return
 
             # Get current prices for all coins
-            current_prices = self.three_commas.get_market_prices(bot.coins)
+            current_prices = bot.coingecko.get_market_prices(bot.coins)
             if not current_prices:
                 logger.error(f"[{bot_name}] Failed to get current prices")
                 return
@@ -243,7 +309,7 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description='Crypto Rebalancing Bot')
-    parser.add_argument('--config', type=str, default='config.yaml',
+    parser.add_argument('--config', type=str, default='config.local.yaml',
                       help='Path to configuration file')
     args = parser.parse_args()
     

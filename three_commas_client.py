@@ -39,50 +39,124 @@ class ThreeCommasClient:
         return data
 
     def get_market_prices(self, pairs: List[str]) -> Dict[str, float]:
-        """Get current market prices for the given pairs."""
+        """Get current market prices for the given pairs using 3Commas API."""
         prices = {}
         
         try:
-            # Get all market pairs first
-            error, data = self.client.request(
-                entity='accounts',
-                action='market_list',
-                payload={}
-            )
-            
-            if error:
-                logger.error(f"Error getting market list: {error}")
-                return prices
-            
-            # Now get prices for each pair
             for pair in pairs:
                 try:
-                    error, pair_data = self.client.request(
-                        entity='accounts',
-                        action='market_prices',
+                    # Convert SOL_USDT to SOLUSDT format
+                    market_code = pair.replace('_', '')
+                    
+                    # Create a dummy smart trade to get market info
+                    error, data = self.client.request(
+                        entity='smart_trades_v2',
+                        action='get_market_prices',
                         payload={
-                            'market_code': pair.replace('_', '')
+                            'market_code': market_code,
+                            'account_id': '0'  # Dummy account ID for paper trading
                         }
                     )
                     
                     if error:
-                        logger.error(f"Error getting price for {pair}: {error}")
+                        logger.warning(f"Error getting price for {pair}: {error}")
                         continue
                         
-                    if pair_data and isinstance(pair_data, dict):
-                        last_price = pair_data.get('last_price')
-                        if last_price:
-                            prices[pair] = float(last_price)
-                            logger.info(f"Got price for {pair}: {last_price}")
-                            
+                    if not data or not isinstance(data, dict):
+                        logger.warning(f"Invalid response for {pair}")
+                        continue
+                    
+                    # Extract price from response
+                    bid = data.get('bid')
+                    ask = data.get('ask')
+                    
+                    if bid and ask:
+                        try:
+                            # Use average of bid and ask
+                            price_value = (float(bid) + float(ask)) / 2
+                            if price_value > 0:
+                                prices[pair] = price_value
+                                logger.info(f"Got price for {pair}: {price_value}")
+                            else:
+                                logger.warning(f"Zero or negative price for {pair}: {price_value}")
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f"Invalid price format for {pair}: {e}")
+                    else:
+                        logger.warning(f"No bid/ask data in response for {pair}")
+                        
                 except Exception as e:
-                    logger.error(f"Error processing {pair}: {e}")
+                    logger.error(f"Error processing {pair}: {str(e)}")
                     continue
                     
         except Exception as e:
-            logger.error(f"Error fetching market data: {e}")
+            logger.error(f"Error fetching market data: {str(e)}")
+            logger.debug(f"Full error: {repr(e)}")
+            
+        if not prices:
+            logger.error("Failed to get any valid prices")
             
         return prices
+
+    def execute_trade(self, from_coin: str, to_coin: str, account_id: str) -> Optional[str]:
+        """Execute a trade between two coins."""
+        self._rate_limit()
+        
+        logger.info(f"Preparing to execute trade: {from_coin} -> {to_coin}")
+        logger.info(f"Mode: {'Paper' if self.mode == 'paper' else 'Real'} Trading")
+        
+        # Convert pair format (e.g., SOL_USDT -> SOLUSDT)
+        from_pair = from_coin.replace('_', '')
+        to_pair = to_coin.replace('_', '')
+        
+        # Prepare trade payload
+        payload = {
+            "account_id": account_id,
+            "pair": from_pair,  # Base pair (e.g., SOLUSDT)
+            "instant": True,  # Execute immediately
+            "skip_enter_step": True,  # Skip confirmation
+            "leverage": {
+                "enabled": False,
+                "type": "custom",
+                "value": 1
+            },
+            "position": {
+                "type": "sell",  # Sell the from_coin
+                "order_type": "market",
+                "units": {
+                    "value": 100  # Amount in USD
+                },
+                "price": {
+                    "value": 0  # Market price
+                }
+            },
+            "take_profit": {
+                "enabled": False
+            },
+            "stop_loss": {
+                "enabled": False
+            },
+            "note": f"Rebalancing trade: {from_coin} -> {to_coin}"
+        }
+        
+        logger.info(f"Sending trade request with payload: {payload}")
+        
+        error, data = self.client.request(
+            entity="smart_trades_v2",
+            action="new",
+            payload=payload
+        )
+
+        if error:
+            logger.error(f"Error creating smart trade: {error}")
+            return None
+
+        trade_id = data.get("id")
+        if trade_id:
+            logger.info(f"Trade successfully created with ID: {trade_id}")
+        else:
+            logger.error("Trade created but no ID returned")
+
+        return trade_id
 
     def create_smart_trade(self, account_id: str, from_coin: str, to_coin: str, 
                          amount: float, pair: str) -> Optional[str]:

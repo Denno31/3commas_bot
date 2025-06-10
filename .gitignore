@@ -42,3 +42,4 @@ logs/
 # Operating System
 .DS_Store
 Thumbs.db
+test_swap.py
