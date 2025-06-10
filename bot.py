@@ -132,46 +132,33 @@ class Bot:
         return best_coin
 
 class CryptoRebalancer:
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self):
         """Initialize the multi-bot rebalancing system."""
         self.db = SessionLocal()
         self.setup_logging()
-        self.load_api_config()
+        
+        # Load API config and initialize clients
+        api_config = self.db.query(ApiConfig).filter_by(name='3commas').first()
+        if not api_config:
+            raise ValueError("3commas API configuration not found in database")
+            
+        self.three_commas = ThreeCommasClient(
+            api_key=api_config.api_key,
+            api_secret=api_config.api_secret,
+            mode=api_config.mode
+        )
+        self.coingecko = CoinGeckoClient()
+        
+        # Initialize other components
         self.setup_bots()
         self.setup_analytics()
         self.executor = ThreadPoolExecutor(max_workers=10)
-        
-        # Initialize API clients
-        threec_config = self.config['3commas']
-        self.three_commas = ThreeCommasClient(
-            api_key=threec_config['api_key'],
-            api_secret=threec_config['api_secret'],
-            mode=threec_config['mode']
-        )
-        self.coingecko = CoinGeckoClient()
         
         # Ensure required directories exist
         for dir_path in ['data', 'logs', 'data/analytics']:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
 
-    def load_config(self, config_path: str) -> None:
-        """Load configuration from YAML file."""
-        with open(config_path, 'r') as f:
-            self.config = yaml.safe_load(f)
 
-    def load_api_config(self) -> None:
-        """Load API configuration from database."""
-        api_config = self.db.query(ApiConfig).filter_by(name='3commas').first()
-        if not api_config:
-            raise ValueError("3commas API configuration not found in database")
-            
-        self.config = {
-            '3commas': {
-                'api_key': api_config.api_key,
-                'api_secret': api_config.api_secret,
-                'mode': api_config.mode
-            }
-        }
 
     def setup_logging(self) -> None:
         """Configure logging with rotation."""
@@ -184,18 +171,10 @@ class CryptoRebalancer:
 
     def setup_bots(self) -> None:
         """Initialize bot instances from database."""
-        threec_config = self.config['3commas']
-        three_commas = ThreeCommasClient(
-            api_key=threec_config['api_key'],
-            api_secret=threec_config['api_secret'],
-            mode=threec_config['mode']
-        )
-        coingecko = CoinGeckoClient()
-
         self.bots = {}
         db_bots = self.db.query(DBBot).all()
         for db_bot in db_bots:
-            self.bots[db_bot.name] = Bot(db_bot, three_commas, coingecko, self.db)
+            self.bots[db_bot.name] = Bot(db_bot, self.three_commas, self.coingecko, self.db)
             logger.info(f"Initialized bot: {db_bot.name}")
 
     def setup_analytics(self) -> None:
@@ -236,41 +215,53 @@ class CryptoRebalancer:
                 logger.error(f"[{bot_name}] Failed to get current prices")
                 return
 
+            # Always update prices in database
+            bot.update_prices(current_prices)
+            logger.info(f"[{bot_name}] Updated prices in database")
+
             # Update analytics
             self.analytics[bot_name].save_price_data(current_prices)
 
-            # Calculate price changes
-            changes = bot.calculate_changes(current_prices)
-            
-            # Find best swap opportunity
-            target_coin = bot.find_best_swap(changes)
-            
-            if target_coin:
-                logger.info(f"[{bot_name}] Swap opportunity detected: {bot.current_coin} → {target_coin}")
+            # If no current coin is set, set it to initial coin
+            if not bot.current_coin and bot.db_bot.initial_coin:
+                bot.current_coin = bot.db_bot.initial_coin
+                bot.db_bot.current_coin = bot.db_bot.initial_coin
+                self.db.commit()
+                logger.info(f"[{bot_name}] Set initial coin to {bot.current_coin}")
+
+            # Calculate price changes if we have a current coin
+            if bot.current_coin:
+                changes = bot.calculate_changes(current_prices)
                 
-                # Create smart trade
-                trade_id = self.three_commas.create_smart_trade(
-                    account_id=bot.account_id,
-                    from_coin=bot.current_coin,
-                    to_coin=target_coin,
-                    amount=1.0,  # This should be configurable
-                    pair=f"{bot.current_coin}_{target_coin}"
-                )
+                # Find best swap opportunity
+                target_coin = bot.find_best_swap(changes)
                 
-                if trade_id:
-                    bot.active_trade_id = trade_id
-                    # Record swap in analytics
-                    self.analytics[bot_name].record_swap(
+                if target_coin:
+                    logger.info(f"[{bot_name}] Swap opportunity detected: {bot.current_coin} → {target_coin}")
+                    
+                    # Create smart trade
+                    trade_id = self.three_commas.create_smart_trade(
+                        account_id=bot.account_id,
                         from_coin=bot.current_coin,
                         to_coin=target_coin,
-                        price_change=changes[target_coin],
-                        amount=1.0
+                        amount=1.0,  # This should be configurable
+                        pair=f"{bot.current_coin}_{target_coin}"
                     )
-                    # Update bot state
-                    bot.current_coin = target_coin
-                    bot.update_prices(current_prices)
-                    self.save_bot_state(bot_name)
-                    logger.info(f"[{bot_name}] Swap completed and state updated")
+                    
+                    if trade_id:
+                        bot.active_trade_id = trade_id
+                        # Record swap in analytics
+                        self.analytics[bot_name].record_swap(
+                            from_coin=bot.current_coin,
+                            to_coin=target_coin,
+                            price_change=changes[target_coin],
+                            amount=1.0
+                        )
+                        # Update bot state
+                        bot.current_coin = target_coin
+                        bot.db_bot.current_coin = target_coin
+                        self.save_bot_state(bot_name)
+                        logger.info(f"[{bot_name}] Swap completed and state updated")
 
         except Exception as e:
             logger.error(f"[{bot_name}] Error in rebalancing cycle: {e}")
@@ -306,12 +297,5 @@ class CryptoRebalancer:
             self.executor.shutdown()
 
 if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='Crypto Rebalancing Bot')
-    parser.add_argument('--config', type=str, default='config.local.yaml',
-                      help='Path to configuration file')
-    args = parser.parse_args()
-    
-    rebalancer = CryptoRebalancer(args.config)
+    rebalancer = CryptoRebalancer()
     rebalancer.run()

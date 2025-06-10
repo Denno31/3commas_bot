@@ -43,3 +43,4 @@ logs/
 .DS_Store
 Thumbs.db
 test_swap.py
+check_tables.py
