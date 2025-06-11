@@ -157,6 +157,7 @@ def get_3commas_client(db: Session, user_id: int) -> Py3CW:
     return client
 
 def bot_to_db(bot: Bot) -> DBBot:
+    now = datetime.utcnow()
     return DBBot(
         name=bot.name,
         enabled=bot.enabled,
@@ -167,7 +168,9 @@ def bot_to_db(bot: Bot) -> DBBot:
         account_id=str(bot.account_id),
         last_check_time=bot.last_check_time,
         active_trade_id=bot.active_trade_id,
-        user_id=bot.user_id
+        user_id=bot.user_id,
+        created_at=now,
+        updated_at=now
     )
 
 def db_to_bot(db_bot: DBBot) -> Bot:
@@ -193,8 +196,15 @@ def get_bots(db: Session = Depends(get_db), current_user: User = Depends(get_cur
 
 @app.post("/api/bots", response_model=BotResponse)
 def create_bot(bot: Bot, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    bot.user_id = current_user.id
-    db_bot = bot_to_db(bot)
+    # Create a new dict with all bot data plus user_id
+    bot_data = bot.dict()
+    bot_data['user_id'] = current_user.id
+    
+    # Create a new Bot instance with the updated data
+    new_bot = Bot(**bot_data)
+    
+    # Convert to DB model and save
+    db_bot = bot_to_db(new_bot)
     db.add(db_bot)
     db.commit()
     db.refresh(db_bot)

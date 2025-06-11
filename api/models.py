@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
@@ -19,14 +19,16 @@ class BotBase(BaseModel):
     check_interval: int
     initial_coin: Optional[str] = None
     account_id: str
+    user_id: Optional[int] = None
 
 class Bot(BotBase):
     id: Optional[int] = None
+    user_id: Optional[int] = None
     current_coin: Optional[str] = None
     last_check_time: Optional[datetime] = None
     active_trade_id: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         from_attributes = True
