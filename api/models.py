@@ -2,6 +2,15 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+class LogEntry(BaseModel):
+    timestamp: datetime
+    level: str
+    message: str
+    bot_id: Optional[int] = None
+
+    class Config:
+        orm_mode = True
+
 class BotBase(BaseModel):
     name: str
     enabled: bool = True

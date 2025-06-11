@@ -3,6 +3,14 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, D
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 print(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db'))
 # Create SQLite engine with configurable path
@@ -50,6 +58,7 @@ class Bot(Base):
     # Relationships
     price_history = relationship("PriceHistory", back_populates="bot")
     trades = relationship("Trade", back_populates="bot")
+    logs = relationship("LogEntry", back_populates="bot")
 
 class PriceHistory(Base):
     __tablename__ = "price_history"
@@ -66,8 +75,8 @@ class PriceHistory(Base):
 class Trade(Base):
     __tablename__ = "trades"
 
-    id = Column(Integer, primary_key=True)
-    bot_id = Column(Integer, ForeignKey("bots.id"))
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey('bots.id'))
     trade_id = Column(String, unique=True)  # 3commas trade ID
     from_coin = Column(String)
     to_coin = Column(String)
@@ -78,6 +87,24 @@ class Trade(Base):
 
     # Relationship
     bot = relationship("Bot", back_populates="trades")
+
+class LogEntry(Base):
+    __tablename__ = "logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    level = Column(String)
+    message = Column(String)
+    bot_id = Column(Integer, ForeignKey('bots.id'), nullable=True)
+
+    bot = relationship("Bot", back_populates="logs")
+
+    @classmethod
+    def log(cls, db, level: str, message: str, bot_id: int = None):
+        entry = cls(level=level, message=message, bot_id=bot_id)
+        db.add(entry)
+        db.commit()
+        logger.log(getattr(logging, level.upper()), message)
 
 class SystemConfig(Base):
     __tablename__ = "system_config"

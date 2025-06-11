@@ -158,33 +158,39 @@ class ThreeCommasClient:
 
         return trade_id
 
-    def create_smart_trade(self, account_id: str, from_coin: str, to_coin: str, 
-                         amount: float, pair: str) -> Optional[str]:
-        """Create a smart trade to swap between coins."""
-        self._rate_limit()
-        
-        # Prepare the smart trade parameters
-        payload = {
-            "account_id": account_id,
-            "pair": pair,  # e.g., "BTC_USDT"
-            "position": {
-                "type": "buy",
-                "units": {"value": amount},
-                "order_type": "market"
-            }
-        }
-
-        error, data = self.client.request(
-            entity="smart_trades_v2",
-            action="new",
-            payload=payload
-        )
-
-        if error:
-            logger.error(f"Error creating smart trade: {error}")
+    def create_smart_trade(self, account_id: str, from_coin: str, to_coin: str, amount: float, pair: str) -> Optional[str]:
+        """Create a smart trade."""
+        try:
+            error, data = self.client.request(
+                entity='smart_trades_v2',
+                action='new',
+                payload={
+                    'account_id': account_id,
+                    'pair': pair,
+                    'position': {
+                        'type': 'buy',
+                        'units': {
+                            'value': amount
+                        },
+                        'order_type': 'market'
+                    },
+                    'take_profit': {
+                        'enabled': 'false'  # We don't use take profit in rebalancing
+                    },
+                    'stop_loss': {
+                        'enabled': 'false'  # We don't use stop loss in rebalancing
+                    }
+                }
+            )
+            if error:
+                logger.error(f"Error creating smart trade: {error}")
+                return None
+                
+            return data['id']
+            
+        except Exception as e:
+            logger.error(f"Error creating smart trade: {e}")
             return None
-
-        return data.get("id")
 
     def get_trade_status(self, trade_id: str) -> Tuple[str, Optional[float]]:
         """Get the status of a smart trade."""

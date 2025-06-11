@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from database import (
     get_db, Bot as DBBot, ApiConfig as DBApiConfig, SystemConfig as DBSystemConfig, PriceHistory as DBPriceHistory,
-    Trade as DBTrade, ApiConfig as DBApiConfig
+    Trade as DBTrade, ApiConfig as DBApiConfig, LogEntry as DBLogEntry
 )
 from models import (
     Bot, ApiConfig, ApiConfigCreate, SystemConfig, SystemConfigCreate,
-    PriceHistory, Trade, Account
+    PriceHistory, Trade, Account, LogEntry
 )
 from typing import List, Optional
 from py3cw.request import Py3CW
@@ -331,6 +331,26 @@ def update_api_config(name: str, config: ApiConfigCreate, db: Session = Depends(
         return ApiConfig.from_orm(db_config)
     except Exception as e:
         logger.error(f"Error updating API config: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/bots/{bot_id}/logs")
+def get_bot_logs(
+    bot_id: int,
+    limit: int = 100,
+    level: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get bot's logs"""
+    try:
+        query = db.query(DBLogEntry).filter(DBLogEntry.bot_id == bot_id)
+        
+        if level:
+            query = query.filter(DBLogEntry.level == level.upper())
+            
+        logs = query.order_by(desc(DBLogEntry.timestamp)).limit(limit).all()
+        return [LogEntry.from_orm(log) for log in logs]
+    except Exception as e:
+        logger.error(f"Error getting bot logs: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/database/backup")

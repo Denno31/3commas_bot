@@ -1,0 +1,139 @@
+.logs-container {
+  background: #1e1e1e;
+  color: #f0f0f0;
+  font-family: 'Consolas', monospace;
+  padding: 1.25rem;
+  border-radius: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 1rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.log-entry {
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #333;
+}
+
+.log-time {
+  color: #888;
+  margin-right: 1rem;
+  font-size: 0.9em;
+}
+
+.log-level {
+  display: inline-block;
+  min-width: 60px;
+  padding: 0.1rem 0.5rem;
+  margin-right: 1rem;
+  text-align: center;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+.log-level.info {
+  background: #2c5282;
+  color: white;
+}
+
+.log-level.error {
+  background: #9b2c2c;
+  color: white;
+}
+
+.log-level.warning {
+  background: #975a16;
+  color: white;
+}
+
+.log-message {
+  color: #f0f0f0;
+}
+
+/* Coin Details Styling */
+.coin-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.coin-detail-item {
+  background: #f8f9fa;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease;
+}
+
+.coin-detail-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.coin-detail-item strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #495057;
+}
+
+.coin-detail-value {
+  font-size: 1.1em;
+  color: #212529;
+}
+
+/* Modal Styles */
+.bot-details-modal .modal-dialog {
+  max-width: 80vw;
+}
+
+.bot-details-modal .modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bot-details-modal .modal-body {
+  min-height: 70vh;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* Tab Content Containers */
+.chart-container,
+.table-container,
+.logs-tab {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  min-height: 400px;
+}
+
+.chart-container {
+  min-height: 400px;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.table-container table {
+  margin: 0;
+  width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .coin-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-container,
+  .table-container,
+  .logs-tab {
+    padding: 1rem;
+  }
+}

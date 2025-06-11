@@ -46,8 +46,12 @@ class Bot:
         elapsed = (datetime.utcnow() - self.last_check_time).total_seconds()
         return elapsed >= (self.check_interval * 60)
 
-    def update_prices(self, prices: Dict[str, float]) -> None:
-        """Update current prices in database."""
+    def update_prices(self, prices: Dict[str, float], store_as_last: bool = True) -> None:
+        """Update current prices in database.
+        Args:
+            prices: New prices to store
+            store_as_last: If True, also update last_prices (default). Set to False when simulating.
+        """
         current_time = datetime.utcnow()
         
         # Update bot's last check time
@@ -64,17 +68,30 @@ class Bot:
             )
             self.db.add(price_history)
         
-        self.last_prices = prices
+        if store_as_last:
+            self.last_prices = prices.copy()
+            
         self.db.commit()
 
     def calculate_changes(self, current_prices: Dict[str, float]) -> Dict[str, float]:
         """Calculate price changes for all coins relative to current holding."""
-        if not self.current_coin or not self.last_prices:
+        logger.info(f"Calculating changes for {self.current_coin} with prices: {current_prices}")
+        logger.info(f"Last prices: {self.last_prices}")
+        
+        if not self.current_coin:
+            logger.warning("No current coin set")
+            return {}
+            
+        if not self.last_prices:
+            logger.warning("No last prices available")
             return {}
 
         changes = {}
         current_coin_price = current_prices[self.current_coin]
         last_coin_price = self.last_prices[self.current_coin]
+        
+        logger.info(f"Current {self.current_coin} price: {current_coin_price}")
+        logger.info(f"Last {self.current_coin} price: {last_coin_price}")
 
         for coin in self.coins:
             if coin == self.current_coin:
@@ -83,6 +100,7 @@ class Bot:
             last_ratio = self.last_prices[coin] / last_coin_price
             change = (current_ratio - last_ratio) / last_ratio
             changes[coin] = change
+            logger.info(f"{coin}: current ratio = {current_ratio}, last ratio = {last_ratio}, change = {change}")
 
         return changes
 
@@ -130,6 +148,26 @@ class Bot:
                 best_coin = coin
 
         return best_coin
+        
+    def check_active_trade(self) -> None:
+        """Check status of active trade and update if completed."""
+        if not self.active_trade_id:
+            return
+            
+        status, price = self.three_commas.get_trade_status(self.active_trade_id)
+        
+        # Update trade status in database
+        trade = self.db.query(Trade).filter_by(trade_id=self.active_trade_id).first()
+        if trade and trade.status != status:
+            trade.status = status
+            self.db.commit()
+            logger.info(f"Updated trade {self.active_trade_id} status to {status}")
+        
+        # Clear active trade if completed
+        if status in ['completed', 'failed', 'cancelled']:
+            self.active_trade_id = None
+            self.db_bot.active_trade_id = None
+            self.db.commit()
 
 class CryptoRebalancer:
     def __init__(self):
@@ -198,42 +236,45 @@ class CryptoRebalancer:
         db_bot.current_coin = bot.current_coin
         db_bot.last_check_time = bot.last_check_time
         db_bot.active_trade_id = bot.active_trade_id
-        
+
         self.db.commit()
 
     def check_and_rebalance_bot(self, bot_name: str) -> None:
-        """Main rebalancing logic for a single bot."""
+        """Check and rebalance a single bot."""
         bot = self.bots[bot_name]
-        
         try:
             if not bot.should_check():
                 return
-
-            # Get current prices for all coins
+            
+            # Check active trade status first
+            if bot.active_trade_id:
+                logger.info(f"[{bot_name}] Checking active trade {bot.active_trade_id}")
+                bot.check_active_trade()
+                return  # Don't look for new trades while one is active
+            
+            # Get current prices
             current_prices = bot.coingecko.get_market_prices(bot.coins)
             if not current_prices:
                 logger.error(f"[{bot_name}] Failed to get current prices")
                 return
-
+                
             # Always update prices in database
             bot.update_prices(current_prices)
             logger.info(f"[{bot_name}] Updated prices in database")
-
+            
             # Update analytics
             self.analytics[bot_name].save_price_data(current_prices)
-
-            # If no current coin is set, set it to initial coin
+            
+            # Set initial coin if needed
             if not bot.current_coin and bot.db_bot.initial_coin:
                 bot.current_coin = bot.db_bot.initial_coin
                 bot.db_bot.current_coin = bot.db_bot.initial_coin
                 self.db.commit()
                 logger.info(f"[{bot_name}] Set initial coin to {bot.current_coin}")
-
-            # Calculate price changes if we have a current coin
+            
+            # Calculate changes and find best swap
             if bot.current_coin:
                 changes = bot.calculate_changes(current_prices)
-                
-                # Find best swap opportunity
                 target_coin = bot.find_best_swap(changes)
                 
                 if target_coin:
@@ -249,26 +290,40 @@ class CryptoRebalancer:
                     )
                     
                     if trade_id:
+                        # Store trade in database
+                        trade = Trade(
+                            bot_id=bot.db_bot.id,
+                            trade_id=trade_id,
+                            from_coin=bot.current_coin,
+                            to_coin=target_coin,
+                            amount=1.0,
+                            price_change=changes[target_coin],
+                            status='pending'
+                        )
+                        self.db.add(trade)
+                        
+                        # Update bot state
                         bot.active_trade_id = trade_id
-                        # Record swap in analytics
                         self.analytics[bot_name].record_swap(
                             from_coin=bot.current_coin,
                             to_coin=target_coin,
                             price_change=changes[target_coin],
                             amount=1.0
                         )
-                        # Update bot state
                         bot.current_coin = target_coin
                         bot.db_bot.current_coin = target_coin
-                        self.save_bot_state(bot_name)
+                        
+                        # Save all changes
+                        self.db.commit()
                         logger.info(f"[{bot_name}] Swap completed and state updated")
-
+                        
         except Exception as e:
             logger.error(f"[{bot_name}] Error in rebalancing cycle: {e}")
 
     def run(self) -> None:
         """Run all bots with scheduled checks."""
         logger.info("Starting Crypto Rebalancing System...")
+
         
         # Load saved states
         for bot_name in self.bots:

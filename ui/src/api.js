@@ -63,6 +63,18 @@ export const fetchBotTrades = async (botId, status, limit = 100) => {
   return handleResponse(response);
 };
 
+export const fetchBotLogs = async (botId, level = null, limit = 100) => {
+  const params = new URLSearchParams();
+  if (level) params.append('level', level);
+  if (limit) params.append('limit', limit);
+  
+  const response = await fetch(`${API_URL}/api/bots/${botId}/logs?${params}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch logs: ${response.statusText}`);
+  }
+  return response.json();
+};
+
 export const fetchBotState = async (botId) => {
   const response = await fetch(`${API_URL}/api/bots/${botId}/state`);
   return handleResponse(response);

@@ -120,7 +120,7 @@ function BotList() {
       />
 
       <Row>
-        <Col md={selectedBot ? 6 : 12}>
+        <Col md={12}>
           <Card>
             <Card.Header>
               <h5 className="mb-0">Bot List</h5>
@@ -192,12 +192,10 @@ function BotList() {
         </Col>
 
         {selectedBot && (
-          <Col md={6}>
-            <BotDetails
-              bot={selectedBot}
-              onClose={() => setSelectedBot(null)}
-            />
-          </Col>
+          <BotDetails
+            bot={selectedBot}
+            onClose={() => setSelectedBot(null)}
+          />
         )}
       </Row>
     </Container>
