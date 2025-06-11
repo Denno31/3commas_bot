@@ -358,7 +358,12 @@ def update_system_config(config: SystemConfig, db: Session = Depends(get_db), cu
 
 @app.get("/api/config/api")
 def get_api_configs(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    return db.query(DBApiConfig).filter(DBApiConfig.user_id == current_user.id).all()
+    configs = db.query(DBApiConfig).filter(DBApiConfig.user_id == current_user.id).all()
+    return {config.name: {
+        'api_key': config.api_key,
+        'api_secret': config.api_secret,
+        'mode': config.mode
+    } for config in configs}
 
 @app.put("/api/config/api/{name}")
 def update_api_config(name: str, config: ApiConfig, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
