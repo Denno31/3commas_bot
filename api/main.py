@@ -30,6 +30,12 @@ class UserCreate(BaseModel):
     username: str
     password: str
 
+class Account(BaseModel):
+    id: str
+    name: str
+    type: str
+    balance: float
+
 class BotResponse(BaseModel):
     id: int
     name: str
@@ -305,7 +311,7 @@ def get_accounts(db: Session = Depends(get_db), current_user: User = Depends(get
     ]
 
 @app.get("/api/config/system")
-def get_system_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_superuser)):
+def get_system_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     config = db.query(DBSystemConfig).first()
     if not config:
         config = DBSystemConfig()
@@ -315,7 +321,7 @@ def get_system_config(db: Session = Depends(get_db), current_user: User = Depend
     return config
 
 @app.put("/api/config/system")
-def update_system_config(config: SystemConfig, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_superuser)):
+def update_system_config(config: SystemConfig, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     db_config = db.query(DBSystemConfig).first()
     if not db_config:
         db_config = DBSystemConfig()
