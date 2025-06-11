@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, D
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
+from passlib.context import CryptContext
 import logging
 
 # Configure logging
@@ -27,6 +28,36 @@ Base = declarative_base()
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    bots = relationship("Bot", back_populates="user")
+    api_configs = relationship("ApiConfig", back_populates="user")
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    def verify_password(self, plain_password):
+        return pwd_context.verify(plain_password, self.hashed_password)
+
+    @staticmethod
+    def get_password_hash(password):
+        return pwd_context.hash(password)
+
 class ApiConfig(Base):
     __tablename__ = "api_config"
 
@@ -35,14 +66,18 @@ class ApiConfig(Base):
     api_key = Column(String, nullable=True)
     api_secret = Column(String, nullable=True)
     mode = Column(String, default='paper')  # paper/real for 3commas
+    user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    user = relationship("User", back_populates="api_configs")
 
 class Bot(Base):
     __tablename__ = "bots"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, index=True)
+    name = Column(String, index=True)
     enabled = Column(Boolean, default=True)
     coins = Column(String)  # Stored as comma-separated string
     threshold_percentage = Column(Float)
@@ -52,10 +87,12 @@ class Bot(Base):
     account_id = Column(String, nullable=False)
     last_check_time = Column(DateTime, nullable=True)
     active_trade_id = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User", back_populates="bots")
     price_history = relationship("PriceHistory", back_populates="bot")
     trades = relationship("Trade", back_populates="bot")
     logs = relationship("LogEntry", back_populates="bot")
