@@ -153,8 +153,12 @@ class SystemConfig(Base):
     websocket_enabled = Column(Boolean, default=True)
     analytics_enabled = Column(Boolean, default=True)
     analytics_save_interval = Column(Integer, default=60)
+    user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    user = relationship("User", backref="system_config")
 
 # Create tables
 Base.metadata.create_all(bind=engine)

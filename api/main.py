@@ -134,12 +134,15 @@ def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-def get_3commas_client(db: Session) -> Py3CW:
+def get_3commas_client(db: Session, user_id: int) -> Py3CW:
     print("Getting 3commas client...")
-    config = db.query(DBApiConfig).filter(DBApiConfig.name == '3commas').first()
+    config = db.query(DBApiConfig).filter(
+        DBApiConfig.name == '3commas',
+        DBApiConfig.user_id == user_id
+    ).first()
     if not config:
-        print("No 3commas config found in database")
-        raise HTTPException(status_code=404, detail="3Commas API configuration not found")
+        print("No 3commas config found in database for this user")
+        raise HTTPException(status_code=404, detail="3Commas API configuration not found for this user")
     
     print(f"Found config: api_key={config.api_key[:8]}..., mode={config.mode}")
     client = Py3CW(
@@ -285,36 +288,44 @@ def get_bot_state(bot_id: int, db: Session = Depends(get_db), current_user: User
 @app.get("/api/accounts")
 def get_accounts(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     print("\n=== Getting trading accounts ===")
-    p3cw = get_3commas_client(db)
+    print(f"User ID: {current_user.id}")
     
-    print("Making request to 3commas API...")
-    error, accounts = p3cw.request(
-        entity="accounts",
-        action=""
-    )
-    print(f"Error: {error}")
-    print(f"Accounts response type: {type(accounts)}")
-    print(f"Accounts: {accounts}")
-    
-    if error:
-        print(f"3commas API error: {error}")
-        raise HTTPException(status_code=500, detail=str(error))
-            
-    return [
-        Account(
-            id=str(acc['id']),
-            name=f"{acc['name']} ({acc['exchange_name']})",
-            type='3commas',
-            balance=float(acc.get('balance_amount_in_usd') or 0)
+    try:
+        p3cw = get_3commas_client(db, current_user.id)
+        
+        print("Making request to 3commas API...")
+        error, accounts = p3cw.request(
+            entity="accounts",
+            action=""
         )
-        for acc in accounts
-    ]
+        print(f"Error: {error}")
+        print(f"Accounts response type: {type(accounts)}")
+        print(f"Accounts: {accounts}")
+        
+        if error:
+            print(f"3commas API error: {error}")
+            raise HTTPException(status_code=500, detail=str(error))
+                
+        return [
+            Account(
+                id=str(acc['id']),
+                name=f"{acc['name']} ({acc['exchange_name']})",
+                type='3commas',
+                balance=float(acc.get('balance_amount_in_usd') or 0)
+            )
+            for acc in accounts
+        ]
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error getting trading accounts: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/config/system")
 def get_system_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    config = db.query(DBSystemConfig).first()
+    config = db.query(DBSystemConfig).filter(DBSystemConfig.user_id == current_user.id).first()
     if not config:
-        config = DBSystemConfig()
+        config = DBSystemConfig(user_id=current_user.id)
         db.add(config)
         db.commit()
         db.refresh(config)
@@ -322,13 +333,14 @@ def get_system_config(db: Session = Depends(get_db), current_user: User = Depend
 
 @app.put("/api/config/system")
 def update_system_config(config: SystemConfig, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    db_config = db.query(DBSystemConfig).first()
+    db_config = db.query(DBSystemConfig).filter(DBSystemConfig.user_id == current_user.id).first()
     if not db_config:
-        db_config = DBSystemConfig()
+        db_config = DBSystemConfig(user_id=current_user.id)
         db.add(db_config)
     
     for key, value in config.dict().items():
-        setattr(db_config, key, value)
+        if key != 'user_id':  # Don't update user_id
+            setattr(db_config, key, value)
     
     db.commit()
     db.refresh(db_config)
@@ -340,14 +352,20 @@ def get_api_configs(db: Session = Depends(get_db), current_user: User = Depends(
 
 @app.put("/api/config/api/{name}")
 def update_api_config(name: str, config: ApiConfig, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    config.user_id = current_user.id
-    db_config = db.query(DBApiConfig).filter(DBApiConfig.name == name).first()
+    # First check if this user already has a config with this name
+    db_config = db.query(DBApiConfig).filter(
+        DBApiConfig.name == name,
+        DBApiConfig.user_id == current_user.id
+    ).first()
+    
     if not db_config:
-        db_config = DBApiConfig(name=name)
+        # Create new config for this user
+        db_config = DBApiConfig(name=name, user_id=current_user.id)
         db.add(db_config)
     
     for key, value in config.dict().items():
-        setattr(db_config, key, value)
+        if key != 'user_id':  # Don't update user_id
+            setattr(db_config, key, value)
     
     db.commit()
     db.refresh(db_config)
