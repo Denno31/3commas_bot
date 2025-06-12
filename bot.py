@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from three_commas_client import ThreeCommasClient
 from coingecko_client import CoinGeckoClient
 from analytics import BotAnalytics
-from api.database import SessionLocal, Bot as DBBot, PriceHistory, Trade, ApiConfig, SystemConfig
+from api.database import SessionLocal, Bot as DBBot, PriceHistory, Trade, SystemConfig
+from api.database import ApiConfig as DatabaseApiConfig  # Rename to avoid conflicts
 
 class Bot:
     def __init__(self, db_bot: DBBot, three_commas: ThreeCommasClient, coingecko: CoinGeckoClient, db: Session):
@@ -176,7 +177,7 @@ class CryptoRebalancer:
         self.setup_logging()
         
         # Load API config and initialize clients
-        api_config = self.db.query(ApiConfig).filter_by(name='3commas').first()
+        api_config = self.db.query(DatabaseApiConfig).filter_by(name='3commas').first()
         if not api_config:
             raise ValueError("3commas API configuration not found in database")
             

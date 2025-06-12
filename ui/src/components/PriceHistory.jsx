@@ -1,7 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Spinner } from 'react-bootstrap';
 import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 import { fetchBotPrices } from '../api';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 function PriceHistory({ botId }) {
   const [priceHistory, setPriceHistory] = useState([]);
@@ -31,7 +51,7 @@ function PriceHistory({ botId }) {
   };
 
   const prepareChartData = () => {
-    if (!priceHistory.length) return null;
+    if (!priceHistory.length) return { chartData: null, coinData: {} };
 
     // Group by coin
     const coinData = {};
@@ -46,7 +66,7 @@ function PriceHistory({ botId }) {
       coinData[record.coin].timestamps.push(new Date(record.timestamp).toLocaleTimeString());
     });
 
-    return {
+    const chartData = {
       labels: coinData[Object.keys(coinData)[0]].timestamps,
       datasets: Object.entries(coinData).map(([coin, data]) => ({
         label: coin,
@@ -56,6 +76,8 @@ function PriceHistory({ botId }) {
         tension: 0.1
       }))
     };
+
+    return { chartData, coinData };
   };
 
   if (loading) {
@@ -68,7 +90,7 @@ function PriceHistory({ botId }) {
     );
   }
 
-  const chartData = prepareChartData();
+  const { chartData, coinData } = prepareChartData();
 
   return (
     <div>
@@ -76,7 +98,7 @@ function PriceHistory({ botId }) {
         <div className="alert alert-danger mb-4">{error}</div>
       )}
 
-      {chartData ? (
+      {chartData && Object.keys(coinData).length > 0 ? (
         <>
           <div style={{ height: '400px' }}>
             <Line

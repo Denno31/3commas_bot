@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from database import get_db, Bot as DBBot, ApiConfig as DBApiConfig, SystemConfig as DBSystemConfig, PriceHistory as DBPriceHistory, Trade as DBTrade, LogEntry as DBLogEntry, User
 from auth import get_current_active_user, get_current_active_superuser, create_access_token
 from sqlalchemy import desc
-from models import ApiConfigCreate, Bot, ApiConfig, SystemConfig
+from models import ApiConfigCreate, Bot, ApiConfig, PriceHistory, SystemConfig
 
 # Configure logging
 logging.basicConfig(
@@ -269,7 +269,7 @@ def get_bot_prices(
         query = query.filter(DBPriceHistory.timestamp <= to_time)
     
     prices = query.order_by(DBPriceHistory.timestamp.desc()).limit(1000).all()
-    return [PriceHistory.from_orm(p) for p in prices]
+    return [PriceHistory.model_validate(p) for p in prices]
 
 @app.get("/api/bots/{bot_id}/trades")
 def get_bot_trades(

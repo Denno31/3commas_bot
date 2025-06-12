@@ -32,18 +32,18 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class ApiConfig(Base):
-    __tablename__ = "api_configs"
+    __tablename__ = "api_config"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)
-    api_key = Column(String)
-    api_secret = Column(String)
-    mode = Column(String, default='paper')
+    name = Column(String, unique=True)  # e.g., '3commas', 'coingecko'
+    api_key = Column(String, nullable=True)
+    api_secret = Column(String, nullable=True)
+    mode = Column(String, default='paper')  # paper/real for 3commas
     user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
+    # Relationship
     user = relationship("User", back_populates="api_configs")
 
 class User(Base):
@@ -73,20 +73,7 @@ class User(Base):
     def get_password_hash(password):
         return pwd_context.hash(password)
 
-class ApiConfig(Base):
-    __tablename__ = "api_config"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True)  # e.g., '3commas', 'coingecko'
-    api_key = Column(String, nullable=True)
-    api_secret = Column(String, nullable=True)
-    mode = Column(String, default='paper')  # paper/real for 3commas
-    user_id = Column(Integer, ForeignKey('users.id'))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationship
-    user = relationship("User", back_populates="api_configs")
 
 class Bot(Base):
     __tablename__ = "bots"
