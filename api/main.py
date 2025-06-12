@@ -1,5 +1,5 @@
 import logging
-from fastapi import FastAPI, HTTPException, Depends, Response, status
+from fastapi import FastAPI, Depends, HTTPException, status, Response, BackgroundTasks, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from py3cw.request import Py3CW
@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from database import get_db, Bot as DBBot, ApiConfig as DBApiConfig, SystemConfig as DBSystemConfig, PriceHistory as DBPriceHistory, Trade as DBTrade, LogEntry as DBLogEntry, User
 from auth import get_current_active_user, get_current_active_superuser, create_access_token
 from sqlalchemy import desc
-from models import Bot, ApiConfig, SystemConfig
+from models import ApiConfigCreate, Bot, ApiConfig, SystemConfig
 
 # Configure logging
 logging.basicConfig(
@@ -365,27 +365,35 @@ def get_api_configs(db: Session = Depends(get_db), current_user: User = Depends(
         'mode': config.mode
     } for config in configs}
 
-@app.put("/api/config/api/{name}")
-def update_api_config(name: str, config: ApiConfig, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+@app.put("/api/config/api")
+def update_api_config(name: str, config: ApiConfigCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     # First check if this user already has a config with this name
     db_config = db.query(DBApiConfig).filter(
         DBApiConfig.name == name,
         DBApiConfig.user_id == current_user.id
     ).first()
+
+    print(db_config)
     
     if not db_config:
         # Create new config for this user
-        db_config = DBApiConfig(name=name, user_id=current_user.id)
+        db_config = DBApiConfig(
+            name=name,
+            user_id=current_user.id,
+            api_key=config.api_key,
+            api_secret=config.api_secret,
+            mode=config.mode
+        )
         db.add(db_config)
-    
-    for key, value in config.dict().items():
-        if key != 'user_id':  # Don't update user_id
-            setattr(db_config, key, value)
+    else:
+        # Update existing config
+        db_config.api_key = config.api_key
+        db_config.api_secret = config.api_secret
+        db_config.mode = config.mode
     
     db.commit()
     db.refresh(db_config)
     return db_config
-
 
 @app.get("/api/bots/{bot_id}/logs")
 def get_bot_logs(

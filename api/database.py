@@ -31,6 +31,21 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+class ApiConfig(Base):
+    __tablename__ = "api_configs"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    api_key = Column(String)
+    api_secret = Column(String)
+    mode = Column(String, default='paper')
+    user_id = Column(Integer, ForeignKey('users.id'))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="api_configs")
+
 class User(Base):
     __tablename__ = "users"
 

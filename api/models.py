@@ -2,6 +2,15 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
+class ApiConfig(BaseModel):
+    api_key: str
+    api_secret: str
+    mode: str = 'paper'
+    user_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
 class LogEntry(BaseModel):
     timestamp: datetime
     level: str

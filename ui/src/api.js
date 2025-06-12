@@ -184,6 +184,7 @@ export const fetchApiConfigs = async () => {
 };
 
 export const updateApiConfig = async (name, config) => {
+  console.log('configs here',config,name)
   const response = await fetch(`${API_URL}/api/config/api?name=${name}`, {
     method: 'PUT',
     headers: { 
