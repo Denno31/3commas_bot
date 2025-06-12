@@ -13,14 +13,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-print(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db'))
-# Create SQLite engine with configurable path
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db')
-print(f"Using database at: {os.path.abspath(DB_PATH)}")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+# Get database URL from environment variable or use SQLite as fallback
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    # Replace postgres:// with postgresql:// for SQLAlchemy
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    engine = create_engine(DATABASE_URL)
+else:
+    # Use SQLite for local development
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db')
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    DATABASE_URL = f"sqlite:///{DB_PATH}"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+print(f"Using database at: {DATABASE_URL}")
 
 # Create declarative base
 Base = declarative_base()
