@@ -99,12 +99,17 @@ class Bot(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Fields for global profit protection
+    reference_coin = Column(String, nullable=True)  # The coin used as reference for global value tracking
+    max_global_equivalent = Column(Float, default=1.0)  # Highest portfolio value (in reference coin units)
+    global_threshold_percentage = Column(Float, default=10.0)  # Global loss threshold (default 10%)
 
     # Relationships
     user = relationship("User", back_populates="bots")
     price_history = relationship("PriceHistory", back_populates="bot")
     trades = relationship("Trade", back_populates="bot")
     logs = relationship("LogEntry", back_populates="bot")
+    coin_units = relationship("CoinUnitTracker", back_populates="bot")
 
 class PriceHistory(Base):
     __tablename__ = "price_history"
@@ -133,6 +138,22 @@ class Trade(Base):
 
     # Relationship
     bot = relationship("Bot", back_populates="trades")
+
+class CoinUnitTracker(Base):
+    __tablename__ = "coin_unit_tracker"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey('bots.id'))
+    coin = Column(String)
+    units = Column(Float)  # Number of units last held
+    last_updated = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    bot = relationship("Bot", back_populates="coin_units")
+    
+    class Config:
+        unique_together = ("bot_id", "coin")  # Each coin should have one entry per bot
+
 
 class LogEntry(Base):
     __tablename__ = "logs"

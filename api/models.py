@@ -38,6 +38,9 @@ class Bot(BotBase):
     active_trade_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    reference_coin: Optional[str] = None
+    max_global_equivalent: float = 1.0
+    global_threshold_percentage: float = 10.0
 
     class Config:
         from_attributes = True
@@ -113,6 +116,20 @@ class Trade(TradeBase):
 
     class Config:
         from_attributes = True
+
+class CoinUnitTrackerBase(BaseModel):
+    coin: str
+    units: float
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CoinUnitTracker(CoinUnitTrackerBase):
+    id: int
+    bot_id: int
+    
+    class Config:
+        from_attributes = True
+
 
 class Account(BaseModel):
     id: str
