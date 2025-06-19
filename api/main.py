@@ -289,13 +289,29 @@ def get_bot_trades(
     trades = query.order_by(DBTrade.executed_at.desc()).limit(limit).all()
     return [Trade.from_orm(t) for t in trades]
 
-@app.get("/api/bots/{bot_id}/state", response_model=Bot)
+@app.get("/api/bots/{bot_id}/state")
 def get_bot_state(bot_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     db_bot = db.query(DBBot).filter(DBBot.id == bot_id, DBBot.user_id == current_user.id).first()
     if not db_bot:
         raise HTTPException(status_code=404, detail="Bot not found")
     
-    return db_to_bot(db_bot)
+    bot_data = db_to_bot(db_bot)
+    
+    # Add additional price source information for the UI
+    bot_state = bot_data.dict()
+    bot_state["price_source"] = db_bot.price_source if hasattr(db_bot, "price_source") else "three_commas"
+    bot_state["price_source_status"] = True  # Default to operational
+    
+    # Include information about the most recent price update
+    latest_price = db.query(DBPriceHistory).filter(DBPriceHistory.bot_id == bot_id).order_by(desc(DBPriceHistory.timestamp)).first()
+    if latest_price:
+        bot_state["last_price_update"] = latest_price.timestamp
+        bot_state["last_price_source"] = latest_price.source if hasattr(latest_price, "source") else bot_state["price_source"]
+    else:
+        bot_state["last_price_update"] = None
+        bot_state["last_price_source"] = None
+    
+    return bot_state
 
 @app.get("/api/accounts")
 def get_accounts(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):

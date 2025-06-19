@@ -41,6 +41,7 @@ class Bot(BotBase):
     reference_coin: Optional[str] = None
     max_global_equivalent: float = 1.0
     global_threshold_percentage: float = 10.0
+    price_source: Optional[str] = "three_commas"
 
     class Config:
         from_attributes = True

@@ -25,6 +25,9 @@ class Bot:
         self.name = db_bot.name
         self.enabled = db_bot.enabled
         self.coins = db_bot.coins.split(',')
+        
+        # Price source configuration (default to three_commas if not set)
+        self.price_source = db_bot.price_source if hasattr(db_bot, 'price_source') and db_bot.price_source else 'three_commas'
         self.threshold = db_bot.threshold_percentage / 100
         self.check_interval = db_bot.check_interval
         self.account_id = db_bot.account_id
@@ -51,6 +54,38 @@ class Bot:
             return True
         elapsed = (datetime.utcnow() - self.last_check_time).total_seconds()
         return elapsed >= (self.check_interval * 60)
+        
+    def get_prices(self) -> Dict[str, float]:
+        """Get current prices using the configured price source with fallback."""
+        prices = {}
+        
+        # First try the configured primary source
+        try:
+            if self.price_source == 'three_commas':
+                # Get prices from 3Commas
+                prices = self.three_commas.get_market_prices(self.coins)
+                logger.info(f"Fetched {len(prices)} prices from 3Commas")
+            else:
+                # Use CoinGecko as the source
+                prices = self.coingecko.get_market_prices(self.coins)
+                logger.info(f"Fetched {len(prices)} prices from CoinGecko")
+        except Exception as e:
+            logger.warning(f"Error fetching prices from {self.price_source}: {e}")
+            
+            # Try fallback source if primary fails
+            try:
+                if self.price_source == 'three_commas':
+                    # Fallback to CoinGecko
+                    prices = self.coingecko.get_market_prices(self.coins)
+                    logger.info(f"Fallback: Fetched {len(prices)} prices from CoinGecko")
+                else:
+                    # Fallback to 3Commas
+                    prices = self.three_commas.get_market_prices(self.coins)
+                    logger.info(f"Fallback: Fetched {len(prices)} prices from 3Commas")
+            except Exception as fallback_error:
+                logger.error(f"Error fetching prices from fallback source: {fallback_error}")
+                
+        return prices
 
     def update_prices(self, prices: Dict[str, float], store_as_last: bool = True) -> None:
         """Update current prices in database.
@@ -255,28 +290,6 @@ class Bot:
             return 0
             
         from_price = current_prices[from_coin]
-        to_price = current_prices[to_coin]
-        
-        # Simple estimation: amount * from_price / to_price
-        return amount * from_price / to_price
-        
-    def calculate_global_equivalent(self, coin: str, amount: float, current_prices: Dict[str, float]) -> float:
-        """Calculate the equivalent value in terms of the reference coin."""
-        if coin not in current_prices or self.reference_coin not in current_prices:
-            logger.error(f"Missing price data for {coin} or {self.reference_coin}")
-            return 0
-            
-        coin_price = current_prices[coin]
-        reference_price = current_prices[self.reference_coin]
-        
-        return amount * coin_price / reference_price
-
-    def check_active_trade(self) -> None:
-        """Check status of active trade and update if completed."""
-        if not self.active_trade_id:
-            return
-            
-        status, price = self.three_commas.get_trade_status(self.active_trade_id)
         
         # Update trade status in database
         trade = self.db.query(Trade).filter_by(trade_id=self.active_trade_id).first()
@@ -391,10 +404,10 @@ class CryptoRebalancer:
                 bot.check_active_trade()
                 return  # Don't look for new trades while one is active
             
-            # Get current prices
-            current_prices = bot.coingecko.get_market_prices(bot.coins)
+            # Get current prices using the configured price source
+            current_prices = bot.get_prices()
             if not current_prices:
-                logger.error(f"[{bot_name}] Failed to get current prices")
+                logger.error(f"[{bot_name}] Failed to get current prices from all sources")
                 return
                 
             # Always update prices in database

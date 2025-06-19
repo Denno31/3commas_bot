@@ -48,6 +48,7 @@ def seed_test_data():
             reference_coin="BTC",  # Use BTC as reference coin
             max_global_equivalent=1.0,  # Start with baseline
             global_threshold_percentage=10.0,  # 10% maximum loss
+            price_source="three_commas",  # Default to three_commas as requested
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow()
         )
