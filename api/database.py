@@ -1,10 +1,14 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, DateTime, ForeignKey, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 from passlib.context import CryptContext
 import logging
+import dotenv
+
+# Load .env file
+dotenv.load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -16,16 +20,20 @@ logger = logging.getLogger(__name__)
 # Get database URL from environment variable or use SQLite as fallback
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
-    # Replace postgres:// with postgresql:// for SQLAlchemy
-    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    engine = create_engine(DATABASE_URL)
-else:
-    # Use SQLite for local development
+if not DATABASE_URL:
+    # Default to SQLite if no URL is provided
     DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db')
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     DATABASE_URL = f"sqlite:///{DB_PATH}"
+    logger.warning(f"No DATABASE_URL found, using SQLite at {DB_PATH}")
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # PostgreSQL connection
+    if DATABASE_URL.startswith('postgres://'):
+        # Replace postgres:// with postgresql:// for SQLAlchemy
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    logger.info(f"Connecting to PostgreSQL database")
+    engine = create_engine(DATABASE_URL)
 
 print(f"Using database at: {DATABASE_URL}")
 
@@ -34,6 +42,13 @@ Base = declarative_base()
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Database initialization function
+def init_db():
+    """Initialize the database by creating all tables"""
+    logger.info("Initializing database schema...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database schema created successfully")
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -103,6 +118,9 @@ class Bot(Base):
     reference_coin = Column(String, nullable=True)  # The coin used as reference for global value tracking
     max_global_equivalent = Column(Float, default=1.0)  # Highest portfolio value (in reference coin units)
     global_threshold_percentage = Column(Float, default=10.0)  # Global loss threshold (default 10%)
+    # New fields for enhanced trading logic
+    global_peak_value = Column(Float, default=0.0)  # Highest portfolio value ever reached (in reference_coin)
+    min_acceptable_value = Column(Float, default=0.0)  # Minimum acceptable value (90% of peak)
 
     # Relationships
     user = relationship("User", back_populates="bots")
@@ -153,6 +171,28 @@ class CoinUnitTracker(Base):
     
     class Config:
         unique_together = ("bot_id", "coin")  # Each coin should have one entry per bot
+
+
+class CoinSnapshot(Base):
+    __tablename__ = "coin_snapshots"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey('bots.id'))
+    coin = Column(String, index=True)
+    initial_price = Column(Float)  # Initial price when snapshot was created
+    snapshot_timestamp = Column(DateTime, default=datetime.utcnow)
+    units_held = Column(Float, default=0.0)  # Number of units currently held (0 if not holding)
+    eth_equivalent_value = Column(Float, default=0.0)  # Value in ETH or reference coin
+    was_ever_held = Column(Boolean, default=False)  # Flag if coin was ever held
+    max_units_reached = Column(Float, default=0.0)  # Maximum number of units ever held
+    
+    # Relationship
+    bot = relationship("Bot", backref="coin_snapshots")
+    
+    # Unique constraint to ensure only one snapshot per coin per bot
+    __table_args__ = (
+        UniqueConstraint('bot_id', 'coin', name='uix_bot_coin'),
+    )
 
 
 class LogEntry(Base):

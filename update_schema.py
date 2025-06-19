@@ -49,6 +49,13 @@ def update_schema():
             cursor.execute("ALTER TABLE bots ADD COLUMN global_threshold_percentage FLOAT DEFAULT 10.0")
         else:
             print("Column 'global_threshold_percentage' already exists.")
+            
+        # Add price_source column if it doesn't exist
+        if 'price_source' not in columns:
+            print("Adding column 'price_source' to bots table...")
+            cursor.execute("ALTER TABLE bots ADD COLUMN price_source VARCHAR DEFAULT 'three_commas'")
+        else:
+            print("Column 'price_source' already exists.")
         
         # Check if coin_unit_tracker table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='coin_unit_tracker'")

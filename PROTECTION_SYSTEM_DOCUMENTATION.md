@@ -113,6 +113,16 @@ The protection system is highly configurable:
 - **Global threshold**: Maximum allowed drawdown from peak (default 10%)
 - **Reference coin**: The coin used for measuring global value (defaults to initial coin)
 - **Per-coin unit buffer**: Requires at least 1% more units than previously held
+- **Price source**: Can be set to 'three_commas' (default) or 'coingecko'
+
+### Price Source Configuration
+
+The system now supports fetching price data from multiple sources:
+
+- **Three Commas API**: Default and primary price source
+- **CoinGecko API**: Alternative price source and fallback
+
+Each bot can be configured with its preferred price source, and the system will automatically fall back to the alternative source if the primary source fails. This ensures reliable price data even if one of the APIs is temporarily unavailable.
 
 ## Conclusion
 
