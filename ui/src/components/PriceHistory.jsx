@@ -1,7 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Spinner } from 'react-bootstrap';
 import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 import { fetchBotPrices } from '../api';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 function PriceHistory({ botId }) {
   const [priceHistory, setPriceHistory] = useState([]);
@@ -31,7 +51,7 @@ function PriceHistory({ botId }) {
   };
 
   const prepareChartData = () => {
-    if (!priceHistory.length) return null;
+    if (!priceHistory.length) return { chartData: null, coinData: {} };
 
     // Group by coin
     const coinData = {};
@@ -43,11 +63,14 @@ function PriceHistory({ botId }) {
         };
       }
       coinData[record.coin].prices.push(record.price);
-      coinData[record.coin].timestamps.push(new Date(record.timestamp).toLocaleTimeString());
+      // Store the timestamp as both raw value and formatted string for different uses
+      coinData[record.coin].timestamps.push(record.timestamp);
+      coinData[record.coin].formattedTimes = coinData[record.coin].formattedTimes || [];
+      coinData[record.coin].formattedTimes.push(new Date(record.timestamp).toLocaleTimeString());
     });
 
-    return {
-      labels: coinData[Object.keys(coinData)[0]].timestamps,
+    const chartData = {
+      labels: coinData[Object.keys(coinData)[0]].formattedTimes,
       datasets: Object.entries(coinData).map(([coin, data]) => ({
         label: coin,
         data: data.prices,
@@ -56,6 +79,8 @@ function PriceHistory({ botId }) {
         tension: 0.1
       }))
     };
+
+    return { chartData, coinData };
   };
 
   if (loading) {
@@ -68,7 +93,7 @@ function PriceHistory({ botId }) {
     );
   }
 
-  const chartData = prepareChartData();
+  const { chartData, coinData } = prepareChartData();
 
   return (
     <div>
@@ -76,7 +101,7 @@ function PriceHistory({ botId }) {
         <div className="alert alert-danger mb-4">{error}</div>
       )}
 
-      {chartData ? (
+      {chartData && Object.keys(coinData).length > 0 ? (
         <>
           <div style={{ height: '400px' }}>
             <Line
@@ -125,7 +150,9 @@ function PriceHistory({ botId }) {
                     <td className={priceChange >= 0 ? 'text-success' : 'text-danger'}>
                       {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
                     </td>
-                    <td>{new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString()}</td>
+                    <td>{typeof data.timestamps[data.timestamps.length - 1] === 'string' 
+                        ? new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString() 
+                        : new Date(Date.parse(data.timestamps[data.timestamps.length - 1])).toLocaleString()}</td>
                   </tr>
                 );
               })}

@@ -10,6 +10,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
     check_interval: '',
     account_id: '',
     initial_coin: '',
+    price_source: 'three_commas',
     enabled: true
   });
 
@@ -27,6 +28,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
           check_interval: editBot.check_interval,
           account_id: editBot.account_id,
           initial_coin: editBot.initial_coin || '',
+          price_source: editBot.price_source || 'three_commas',
           enabled: editBot.enabled
         });
       }
@@ -95,6 +97,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
         check_interval: '',
         account_id: '',
         initial_coin: '',
+        price_source: 'three_commas',
         enabled: true
       });
     }
@@ -193,6 +196,20 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
               onChange={(e) => setFormData({ ...formData, check_interval: e.target.value })}
               required
             />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Price Source</Form.Label>
+            <Form.Select
+              value={formData.price_source}
+              onChange={(e) => setFormData({ ...formData, price_source: e.target.value })}
+            >
+              <option value="three_commas">Three Commas</option>
+              <option value="coingecko">CoinGecko</option>
+            </Form.Select>
+            <Form.Text className="text-muted">
+              Will fall back to alternative source if primary source fails
+            </Form.Text>
           </Form.Group>
 
           <Form.Group className="mb-3">

@@ -1,9 +1,14 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, DateTime, ForeignKey, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
+from passlib.context import CryptContext
 import logging
+import dotenv
+
+# Load .env file
+dotenv.load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -12,20 +17,41 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-print(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db'))
-# Create SQLite engine with configurable path
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db')
-print(f"Using database at: {os.path.abspath(DB_PATH)}")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+# Get database URL from environment variable or use SQLite as fallback
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+if not DATABASE_URL:
+    # Default to SQLite if no URL is provided
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db')
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    DATABASE_URL = f"sqlite:///{DB_PATH}"
+    logger.warning(f"No DATABASE_URL found, using SQLite at {DB_PATH}")
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # PostgreSQL connection
+    if DATABASE_URL.startswith('postgres://'):
+        # Replace postgres:// with postgresql:// for SQLAlchemy
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    logger.info(f"Connecting to PostgreSQL database")
+    engine = create_engine(DATABASE_URL)
+
+print(f"Using database at: {DATABASE_URL}")
 
 # Create declarative base
 Base = declarative_base()
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Database initialization function
+def init_db():
+    """Initialize the database by creating all tables"""
+    logger.info("Initializing database schema...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database schema created successfully")
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class ApiConfig(Base):
     __tablename__ = "api_config"
@@ -35,14 +61,47 @@ class ApiConfig(Base):
     api_key = Column(String, nullable=True)
     api_secret = Column(String, nullable=True)
     mode = Column(String, default='paper')  # paper/real for 3commas
+    user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    user = relationship("User", back_populates="api_configs")
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    bots = relationship("Bot", back_populates="user")
+    api_configs = relationship("ApiConfig", back_populates="user")
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    def verify_password(self, plain_password):
+        return pwd_context.verify(plain_password, self.hashed_password)
+
+    @staticmethod
+    def get_password_hash(password):
+        return pwd_context.hash(password)
+
+
 
 class Bot(Base):
     __tablename__ = "bots"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, index=True)
+    name = Column(String, index=True)
     enabled = Column(Boolean, default=True)
     coins = Column(String)  # Stored as comma-separated string
     threshold_percentage = Column(Float)
@@ -52,13 +111,23 @@ class Bot(Base):
     account_id = Column(String, nullable=False)
     last_check_time = Column(DateTime, nullable=True)
     active_trade_id = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Fields for global profit protection
+    reference_coin = Column(String, nullable=True)  # The coin used as reference for global value tracking
+    max_global_equivalent = Column(Float, default=1.0)  # Highest portfolio value (in reference coin units)
+    global_threshold_percentage = Column(Float, default=10.0)  # Global loss threshold (default 10%)
+    # New fields for enhanced trading logic
+    global_peak_value = Column(Float, default=0.0)  # Highest portfolio value ever reached (in reference_coin)
+    min_acceptable_value = Column(Float, default=0.0)  # Minimum acceptable value (90% of peak)
 
     # Relationships
+    user = relationship("User", back_populates="bots")
     price_history = relationship("PriceHistory", back_populates="bot")
     trades = relationship("Trade", back_populates="bot")
     logs = relationship("LogEntry", back_populates="bot")
+    coin_units = relationship("CoinUnitTracker", back_populates="bot")
 
 class PriceHistory(Base):
     __tablename__ = "price_history"
@@ -88,6 +157,44 @@ class Trade(Base):
     # Relationship
     bot = relationship("Bot", back_populates="trades")
 
+class CoinUnitTracker(Base):
+    __tablename__ = "coin_unit_tracker"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey('bots.id'))
+    coin = Column(String)
+    units = Column(Float)  # Number of units last held
+    last_updated = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    bot = relationship("Bot", back_populates="coin_units")
+    
+    class Config:
+        unique_together = ("bot_id", "coin")  # Each coin should have one entry per bot
+
+
+class CoinSnapshot(Base):
+    __tablename__ = "coin_snapshots"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    bot_id = Column(Integer, ForeignKey('bots.id'))
+    coin = Column(String, index=True)
+    initial_price = Column(Float)  # Initial price when snapshot was created
+    snapshot_timestamp = Column(DateTime, default=datetime.utcnow)
+    units_held = Column(Float, default=0.0)  # Number of units currently held (0 if not holding)
+    eth_equivalent_value = Column(Float, default=0.0)  # Value in ETH or reference coin
+    was_ever_held = Column(Boolean, default=False)  # Flag if coin was ever held
+    max_units_reached = Column(Float, default=0.0)  # Maximum number of units ever held
+    
+    # Relationship
+    bot = relationship("Bot", backref="coin_snapshots")
+    
+    # Unique constraint to ensure only one snapshot per coin per bot
+    __table_args__ = (
+        UniqueConstraint('bot_id', 'coin', name='uix_bot_coin'),
+    )
+
+
 class LogEntry(Base):
     __tablename__ = "logs"
 
@@ -116,8 +223,12 @@ class SystemConfig(Base):
     websocket_enabled = Column(Boolean, default=True)
     analytics_enabled = Column(Boolean, default=True)
     analytics_save_interval = Column(Integer, default=60)
+    user_id = Column(Integer, ForeignKey('users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    user = relationship("User", backref="system_config")
 
 # Create tables
 Base.metadata.create_all(bind=engine)

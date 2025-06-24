@@ -32,6 +32,7 @@ function SystemConfig() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('in load configs')
     loadConfigs();
   }, []);
 
@@ -41,6 +42,7 @@ function SystemConfig() {
         fetchSystemConfig(),
         fetchApiConfigs()
       ]);
+      console.log({sysConfig, apiConfig})
       setSystemConfig(sysConfig);
       setApiConfigs(apiConfig || {
         '3commas': {
