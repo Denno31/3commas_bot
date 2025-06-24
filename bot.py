@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from three_commas_client import ThreeCommasClient
 from coingecko_client import CoinGeckoClient
 from analytics import BotAnalytics
-from api.database import SessionLocal, Bot as DBBot, PriceHistory, Trade, ApiConfig, SystemConfig
+from api.database import SessionLocal, Bot as DBBot, PriceHistory, Trade, SystemConfig, CoinUnitTracker
+from api.database import ApiConfig as DatabaseApiConfig  # Rename to avoid conflicts
 
 class Bot:
     def __init__(self, db_bot: DBBot, three_commas: ThreeCommasClient, coingecko: CoinGeckoClient, db: Session):
@@ -24,6 +25,9 @@ class Bot:
         self.name = db_bot.name
         self.enabled = db_bot.enabled
         self.coins = db_bot.coins.split(',')
+        
+        # Price source configuration (default to three_commas if not set)
+        self.price_source = db_bot.price_source if hasattr(db_bot, 'price_source') and db_bot.price_source else 'three_commas'
         self.threshold = db_bot.threshold_percentage / 100
         self.check_interval = db_bot.check_interval
         self.account_id = db_bot.account_id
@@ -31,6 +35,11 @@ class Bot:
         self.last_check_time = db_bot.last_check_time
         self.active_trade_id = db_bot.active_trade_id
         self.db_bot = db_bot  # Keep reference to db model
+        
+        # Global profit protection fields
+        self.reference_coin = db_bot.reference_coin or db_bot.initial_coin
+        self.max_global_equivalent = db_bot.max_global_equivalent or 1.0
+        self.global_threshold = db_bot.global_threshold_percentage / 100 if db_bot.global_threshold_percentage else 0.1  # Default 10%
         
         # Get latest prices
         latest_prices = db.query(PriceHistory).filter(
@@ -45,6 +54,38 @@ class Bot:
             return True
         elapsed = (datetime.utcnow() - self.last_check_time).total_seconds()
         return elapsed >= (self.check_interval * 60)
+        
+    def get_prices(self) -> Dict[str, float]:
+        """Get current prices using the configured price source with fallback."""
+        prices = {}
+        
+        # First try the configured primary source
+        try:
+            if self.price_source == 'three_commas':
+                # Get prices from 3Commas
+                prices = self.three_commas.get_market_prices(self.coins)
+                logger.info(f"Fetched {len(prices)} prices from 3Commas")
+            else:
+                # Use CoinGecko as the source
+                prices = self.coingecko.get_market_prices(self.coins)
+                logger.info(f"Fetched {len(prices)} prices from CoinGecko")
+        except Exception as e:
+            logger.warning(f"Error fetching prices from {self.price_source}: {e}")
+            
+            # Try fallback source if primary fails
+            try:
+                if self.price_source == 'three_commas':
+                    # Fallback to CoinGecko
+                    prices = self.coingecko.get_market_prices(self.coins)
+                    logger.info(f"Fallback: Fetched {len(prices)} prices from CoinGecko")
+                else:
+                    # Fallback to 3Commas
+                    prices = self.three_commas.get_market_prices(self.coins)
+                    logger.info(f"Fallback: Fetched {len(prices)} prices from 3Commas")
+            except Exception as fallback_error:
+                logger.error(f"Error fetching prices from fallback source: {fallback_error}")
+                
+        return prices
 
     def update_prices(self, prices: Dict[str, float], store_as_last: bool = True) -> None:
         """Update current prices in database.
@@ -138,23 +179,117 @@ class Bot:
         return None
 
     def find_best_swap(self, changes: Dict[str, float]) -> Optional[str]:
-        """Find the best coin to swap to if threshold is met."""
+        """Find the best coin to swap to if all protection criteria are met:
+        1. Price change exceeds threshold (already implemented)
+        2. Per-coin unit protection: must receive more units than last time
+        3. Global accumulated profit protection: don't give up too much accumulated value
+        """
+        if not self.current_coin or not self.last_prices:
+            return None
+            
         best_coin = None
         best_change = -float('inf')
-
+        
+        # Current amount (simplified to 1.0 for now)
+        current_amount = 1.0
+        
+        # First find all coins that exceed the threshold
+        candidates = []
         for coin, change in changes.items():
-            if change > self.threshold and change > best_change:
-                best_change = change
-                best_coin = coin
+            if change > self.threshold:
+                candidates.append((coin, change))
+                
+        # Sort candidates by change percentage (best first)
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        
+        logger.info(f"Found {len(candidates)} swap candidates exceeding threshold")
+        
+        # Check each candidate against additional protection criteria
+        for coin, change in candidates:
+            # Estimate units to receive
+            estimated_units = self.estimate_units_to_receive(
+                self.current_coin, coin, current_amount, self.last_prices
+            )
+            
+            # PROTECTION 1: Per-coin unit protection
+            last_units = self.get_last_held_units(coin)
+            if last_units > 0:
+                # Apply 1% buffer for coin units (to avoid tiny gains)
+                min_required_units = last_units * 1.01
+                if estimated_units <= min_required_units:
+                    logger.info(
+                        f"Rejecting {coin}: Would get {estimated_units} units, "
+                        f"but previously held {last_units} and need >1% gain"
+                    )
+                    continue
+                    
+            # PROTECTION 3: Global accumulated profit protection
+            global_equivalent = self.calculate_global_equivalent(
+                coin, estimated_units, self.last_prices
+            )
+            
+            # Only allow if it preserves at least 90% of the global peak
+            min_global_value = self.max_global_equivalent * (1 - self.global_threshold)
+            if global_equivalent < min_global_value:
+                logger.info(
+                    f"Rejecting {coin}: Global value would be {global_equivalent} "
+                    f"which is below minimum of {min_global_value} "
+                    f"({self.global_threshold*100}% drop from peak of {self.max_global_equivalent})"
+                )
+                continue
+                
+            # If we get here, this coin is a valid swap target
+            best_coin = coin
+            best_change = change
+            logger.info(
+                f"Selected {coin} as swap target: change={change:.2%}, "
+                f"units={estimated_units} (previous={last_units}), "
+                f"global value={global_equivalent} (minimum={min_global_value})"
+            )
+            break
 
         return best_coin
         
-    def check_active_trade(self) -> None:
-        """Check status of active trade and update if completed."""
-        if not self.active_trade_id:
-            return
+    def get_last_held_units(self, coin: str) -> float:
+        """Get the number of units last held for a specific coin.
+        Returns 0 if no record exists."""
+        record = self.db.query(CoinUnitTracker).filter(
+            CoinUnitTracker.bot_id == self.db_bot.id,
+            CoinUnitTracker.coin == coin
+        ).first()
+        
+        return record.units if record else 0
+    
+    def update_held_units(self, coin: str, units: float) -> None:
+        """Update or create a record of units held for a specific coin."""
+        record = self.db.query(CoinUnitTracker).filter(
+            CoinUnitTracker.bot_id == self.db_bot.id,
+            CoinUnitTracker.coin == coin
+        ).first()
+        
+        if record:
+            record.units = units
+            record.last_updated = datetime.utcnow()
+        else:
+            record = CoinUnitTracker(
+                bot_id=self.db_bot.id,
+                coin=coin,
+                units=units,
+                last_updated=datetime.utcnow()
+            )
+            self.db.add(record)
+        
+        self.db.commit()
+        logger.info(f"Updated unit tracking for {coin}: {units} units")
+    
+    def estimate_units_to_receive(self, from_coin: str, to_coin: str, amount: float, current_prices: Dict[str, float]) -> float:
+        """Estimate the number of units to receive when swapping from one coin to another.
+        This is a simplified calculation and doesn't account for fees or slippage."""
+        if from_coin not in current_prices or to_coin not in current_prices:
+            logger.error(f"Missing price data for {from_coin} or {to_coin}")
+            return 0
             
-        status, price = self.three_commas.get_trade_status(self.active_trade_id)
+        from_price = current_prices[from_coin]
         
         # Update trade status in database
         trade = self.db.query(Trade).filter_by(trade_id=self.active_trade_id).first()
@@ -162,6 +297,19 @@ class Bot:
             trade.status = status
             self.db.commit()
             logger.info(f"Updated trade {self.active_trade_id} status to {status}")
+            
+            # If the trade completed successfully, update unit tracking
+            if status == 'completed':
+                # For simplicity, use 1.0 as the amount - this should be the actual amount from the trade response
+                estimated_units = self.estimate_units_to_receive(trade.from_coin, trade.to_coin, trade.amount, self.last_prices)
+                self.update_held_units(trade.to_coin, estimated_units)
+                
+                # Also update global max equivalent if this represents a new high
+                global_equivalent = self.calculate_global_equivalent(trade.to_coin, estimated_units, self.last_prices)
+                if global_equivalent > self.max_global_equivalent:
+                    self.max_global_equivalent = global_equivalent
+                    self.db_bot.max_global_equivalent = global_equivalent
+                    logger.info(f"New global max equivalent: {self.max_global_equivalent} {self.reference_coin}")
         
         # Clear active trade if completed
         if status in ['completed', 'failed', 'cancelled']:
@@ -176,7 +324,7 @@ class CryptoRebalancer:
         self.setup_logging()
         
         # Load API config and initialize clients
-        api_config = self.db.query(ApiConfig).filter_by(name='3commas').first()
+        api_config = self.db.query(DatabaseApiConfig).filter_by(name='3commas').first()
         if not api_config:
             raise ValueError("3commas API configuration not found in database")
             
@@ -236,6 +384,10 @@ class CryptoRebalancer:
         db_bot.current_coin = bot.current_coin
         db_bot.last_check_time = bot.last_check_time
         db_bot.active_trade_id = bot.active_trade_id
+        
+        # Save global profit protection data
+        db_bot.reference_coin = bot.reference_coin
+        db_bot.max_global_equivalent = bot.max_global_equivalent
 
         self.db.commit()
 
@@ -252,10 +404,10 @@ class CryptoRebalancer:
                 bot.check_active_trade()
                 return  # Don't look for new trades while one is active
             
-            # Get current prices
-            current_prices = bot.coingecko.get_market_prices(bot.coins)
+            # Get current prices using the configured price source
+            current_prices = bot.get_prices()
             if not current_prices:
-                logger.error(f"[{bot_name}] Failed to get current prices")
+                logger.error(f"[{bot_name}] Failed to get current prices from all sources")
                 return
                 
             # Always update prices in database

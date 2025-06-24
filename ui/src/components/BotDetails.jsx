@@ -81,6 +81,34 @@ function BotDetails({ bot, onClose }) {
                           </div>
                         </div>
                         <div className="coin-detail-item">
+                          <strong>Price Source</strong>
+                          <div className="coin-detail-value">
+                            {state.price_source === 'three_commas' ? 'Three Commas' : 'CoinGecko'}
+                            {state.price_source_status && (
+                              <span className={`ms-2 badge ${state.last_price_source === state.price_source ? 'bg-success' : 'bg-warning'}`}>
+                                {state.last_price_source === state.price_source ? 'Active' : 'Fallback Active'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="coin-detail-item">
+                          <strong>Last Price Update</strong>
+                          <div className="coin-detail-value">
+                            {state.last_price_update ? (
+                              <>
+                                {new Date(state.last_price_update).toLocaleString()}
+                                {state.last_price_source && (
+                                  <span className="ms-2 text-muted">
+                                    via {state.last_price_source === 'three_commas' ? 'Three Commas' : 'CoinGecko'}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              'Never'
+                            )}
+                          </div>
+                        </div>
+                        <div className="coin-detail-item">
                           <strong>Last Check</strong>
                           <div className="coin-detail-value">
                             {state.last_check_time ? (
