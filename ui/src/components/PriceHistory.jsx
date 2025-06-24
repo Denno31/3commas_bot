@@ -63,11 +63,14 @@ function PriceHistory({ botId }) {
         };
       }
       coinData[record.coin].prices.push(record.price);
-      coinData[record.coin].timestamps.push(new Date(record.timestamp).toLocaleTimeString());
+      // Store the timestamp as both raw value and formatted string for different uses
+      coinData[record.coin].timestamps.push(record.timestamp);
+      coinData[record.coin].formattedTimes = coinData[record.coin].formattedTimes || [];
+      coinData[record.coin].formattedTimes.push(new Date(record.timestamp).toLocaleTimeString());
     });
 
     const chartData = {
-      labels: coinData[Object.keys(coinData)[0]].timestamps,
+      labels: coinData[Object.keys(coinData)[0]].formattedTimes,
       datasets: Object.entries(coinData).map(([coin, data]) => ({
         label: coin,
         data: data.prices,
@@ -147,7 +150,9 @@ function PriceHistory({ botId }) {
                     <td className={priceChange >= 0 ? 'text-success' : 'text-danger'}>
                       {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
                     </td>
-                    <td>{new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString()}</td>
+                    <td>{typeof data.timestamps[data.timestamps.length - 1] === 'string' 
+                        ? new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString() 
+                        : new Date(Date.parse(data.timestamps[data.timestamps.length - 1])).toLocaleString()}</td>
                   </tr>
                 );
               })}
