@@ -1,18 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, Table, Spinner } from 'react-bootstrap';
 import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { fetchBotPrices } from '../api';
+
+// Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 function PriceHistory({ botId }) {
   const [priceHistory, setPriceHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [coinData, setCoinData] = useState({});
+  const chartRef = useRef(null);
 
   useEffect(() => {
     loadPriceHistory();
     const interval = setInterval(loadPriceHistory, 60000); // Update every minute
     return () => clearInterval(interval);
   }, [botId]);
+  
+  // Process price history data whenever it changes
+  useEffect(() => {
+    if (priceHistory.length > 0) {
+      // Group by coin
+      const newCoinData = {};
+      priceHistory.forEach(record => {
+        if (!newCoinData[record.coin]) {
+          newCoinData[record.coin] = {
+            prices: [],
+            timestamps: []
+          };
+        }
+        newCoinData[record.coin].prices.push(record.price);
+        newCoinData[record.coin].timestamps.push(new Date(record.timestamp).toLocaleTimeString());
+      });
+      
+      setCoinData(newCoinData);
+    }
+  }, [priceHistory]);
 
   const loadPriceHistory = async () => {
     try {
@@ -31,20 +57,7 @@ function PriceHistory({ botId }) {
   };
 
   const prepareChartData = () => {
-    if (!priceHistory.length) return null;
-
-    // Group by coin
-    const coinData = {};
-    priceHistory.forEach(record => {
-      if (!coinData[record.coin]) {
-        coinData[record.coin] = {
-          prices: [],
-          timestamps: []
-        };
-      }
-      coinData[record.coin].prices.push(record.price);
-      coinData[record.coin].timestamps.push(new Date(record.timestamp).toLocaleTimeString());
-    });
+    if (!Object.keys(coinData).length) return null;
 
     return {
       labels: coinData[Object.keys(coinData)[0]].timestamps,
@@ -68,6 +81,7 @@ function PriceHistory({ botId }) {
     );
   }
 
+  // Prepare chart data based on the current coinData
   const chartData = prepareChartData();
 
   return (
@@ -80,6 +94,7 @@ function PriceHistory({ botId }) {
         <>
           <div style={{ height: '400px' }}>
             <Line
+              ref={chartRef}
               data={chartData}
               options={{
                 responsive: true,
@@ -97,6 +112,9 @@ function PriceHistory({ botId }) {
                     callbacks: {
                       label: context => `${context.dataset.label}: $${context.parsed.y.toLocaleString()}`
                     }
+                  },
+                  legend: {
+                    display: true
                   }
                 }
               }}
