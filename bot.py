@@ -75,23 +75,31 @@ class Bot:
 
     def calculate_changes(self, current_prices: Dict[str, float]) -> Dict[str, float]:
         """Calculate price changes for all coins relative to current holding."""
-        logger.info(f"Calculating changes for {self.current_coin} with prices: {current_prices}")
-        logger.info(f"Last prices: {self.last_prices}")
+        logger.info(f"BOT [{self.name}] Calculating changes for {self.current_coin} with prices: {current_prices}")
+        logger.info(f"BOT [{self.name}] Last prices: {self.last_prices}")
         
         if not self.current_coin:
-            logger.warning("No current coin set")
+            logger.warning(f"BOT [{self.name}] ❌ TRADE BLOCKED: No current coin set")
             return {}
             
         if not self.last_prices:
-            logger.warning("No last prices available")
+            logger.warning(f"BOT [{self.name}] ❌ TRADE BLOCKED: No last prices available")
+            return {}
+            
+        if self.current_coin not in current_prices:
+            logger.warning(f"BOT [{self.name}] ❌ TRADE BLOCKED: Current coin {self.current_coin} not in latest prices")
+            return {}
+            
+        if self.current_coin not in self.last_prices:
+            logger.warning(f"BOT [{self.name}] ❌ TRADE BLOCKED: Current coin {self.current_coin} not in last prices")
             return {}
 
         changes = {}
         current_coin_price = current_prices[self.current_coin]
         last_coin_price = self.last_prices[self.current_coin]
         
-        logger.info(f"Current {self.current_coin} price: {current_coin_price}")
-        logger.info(f"Last {self.current_coin} price: {last_coin_price}")
+        logger.info(f"BOT [{self.name}] Current {self.current_coin} price: {current_coin_price}")
+        logger.info(f"BOT [{self.name}] Last {self.current_coin} price: {last_coin_price}")
 
         for coin in self.coins:
             if coin == self.current_coin:
@@ -142,11 +150,29 @@ class Bot:
         best_coin = None
         best_change = -float('inf')
 
+        logger.debug(f"BOT [{self.name}] Finding best swap from changes: {changes}")
+        logger.debug(f"BOT [{self.name}] Threshold for swaps: {self.threshold}")
+        
+        if not changes:
+            logger.info(f"BOT [{self.name}] ❌ NO SWAP: No price changes data available")
+            return None
+
         for coin, change in changes.items():
+            logger.debug(f"BOT [{self.name}] Evaluating {coin} with change {change}")
             if change > self.threshold and change > best_change:
                 best_change = change
                 best_coin = coin
+                logger.debug(f"BOT [{self.name}] New best candidate: {coin} ({change})")
+            elif change > self.threshold:
+                logger.debug(f"BOT [{self.name}] {coin} exceeds threshold but not better than current best {best_coin}")
+            elif change > best_change:
+                logger.debug(f"BOT [{self.name}] {coin} is better than previous best but below threshold {self.threshold}")
 
+        if best_coin:
+            logger.info(f"BOT [{self.name}] ✅ SWAP CANDIDATE FOUND: {best_coin} with change {best_change}")
+        else:
+            logger.info(f"BOT [{self.name}] ❌ NO SWAP: No coin exceeded threshold {self.threshold}")
+            
         return best_coin
         
     def check_active_trade(self) -> None:
@@ -271,25 +297,41 @@ class CryptoRebalancer:
                 bot.db_bot.current_coin = bot.db_bot.initial_coin
                 self.db.commit()
                 logger.info(f"[{bot_name}] Set initial coin to {bot.current_coin}")
-            
-            # Calculate changes and find best swap
+                    # Calculate changes and find best swap
             if bot.current_coin:
+                logger.info(f"[{bot_name}] 🔍 TRADE CHECK: Starting trade evaluation cycle")
                 changes = bot.calculate_changes(current_prices)
+                
+                if not changes:
+                    logger.warning(f"[{bot_name}] ❌ TRADE BLOCKED: No valid price changes calculated")
+                    return
+                    
+                logger.info(f"[{bot_name}] Price changes calculated: {changes}")
                 target_coin = bot.find_best_swap(changes)
                 
                 if target_coin:
-                    logger.info(f"[{bot_name}] Swap opportunity detected: {bot.current_coin} → {target_coin}")
+                    logger.info(f"[{bot_name}] ✅ SWAP OPPORTUNITY: {bot.current_coin} → {target_coin} with {changes[target_coin]:.2f}% change")
+                    
+                    # Check if there's already an active trade
+                    if bot.active_trade_id:
+                        logger.warning(f"[{bot_name}] ❌ TRADE BLOCKED: Already has active trade ID {bot.active_trade_id}")
+                        return
                     
                     # Create smart trade
-                    trade_id = self.three_commas.create_smart_trade(
-                        account_id=bot.account_id,
-                        from_coin=bot.current_coin,
-                        to_coin=target_coin,
-                        amount=1.0,  # This should be configurable
-                        pair=f"{bot.current_coin}_{target_coin}"
-                    )
-                    
+                    try:
+                        logger.info(f"[{bot_name}] 🔄 EXECUTING TRADE: Creating smart trade for {bot.current_coin} → {target_coin}")
+                        trade_id = self.three_commas.create_smart_trade(
+                            account_id=bot.account_id,
+                            from_coin=bot.current_coin,
+                            to_coin=target_coin,
+                            amount=1.0,  # This should be configurable
+                            pair=f"{bot.current_coin}_{target_coin}"
+                        )
+                    except Exception as e:
+                        logger.error(f"[{bot_name}] ❌ TRADE FAILED: Error creating smart trade: {str(e)}")
+                        return
                     if trade_id:
+                        logger.info(f"[{bot_name}] ✅ TRADE CREATED: Got trade ID {trade_id}")
                         # Store trade in database
                         trade = Trade(
                             bot_id=bot.db_bot.id,
@@ -315,16 +357,19 @@ class CryptoRebalancer:
                         
                         # Save all changes
                         self.db.commit()
-                        logger.info(f"[{bot_name}] Swap completed and state updated")
-                        
+                        logger.info(f"[{bot_name}] 🎉 TRADE COMPLETE: Swap processed and state updated")
+                    else:
+                        logger.error(f"[{bot_name}] ❌ TRADE FAILED: No trade ID returned from 3commas")
+                else:
+                    logger.info(f"[{bot_name}] ℹ️ NO SWAP NEEDED: No suitable target coin found that meets the threshold criteria")
+            else:
+                logger.warning(f"[{bot_name}] ❌ TRADE BLOCKED: No current coin defined for bot")
         except Exception as e:
             logger.error(f"[{bot_name}] Error in rebalancing cycle: {e}")
 
     def run(self) -> None:
-        """Run all bots with scheduled checks."""
         logger.info("Starting Crypto Rebalancing System...")
 
-        
         # Load saved states
         for bot_name in self.bots:
             self.load_bot_state(bot_name)
