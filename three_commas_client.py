@@ -38,54 +38,68 @@ class ThreeCommasClient:
             return []
         return data
 
-    def get_market_prices(self, pairs: List[str]) -> Dict[str, float]:
-        """Get current market prices for the given pairs using 3Commas API."""
+    def get_market_prices(self, coins: List[str]) -> Dict[str, float]:
+        """Get current market prices for the given coins using 3Commas API.
+        
+        Args:
+            coins: List of coin symbols (e.g., "BTC", "ETH")
+            
+        Returns:
+            Dictionary of coin symbols to USD prices
+        """
         prices = {}
         
+        # Try to get prices from 3Commas API
         try:
-            for pair in pairs:
+            # First try to get all cryptocurrency market pairs
+            error, all_markets = self.client.request(
+                entity='accounts',
+                action='market_pairs'
+            )
+            
+            if error:
+                logger.warning(f"Failed to get market pairs: {error}")
+                return prices
+                
+            # Attempt to get exchange tickers for the coins we're interested in
+            for coin in coins:
                 try:
-                    # Convert SOL_USDT to SOLUSDT format
-                    market_code = pair.replace('_', '')
+                    # Look for pairs with USDT (most common stable pair)
+                    pair = f"{coin}_USDT"
                     
-                    # Create a dummy smart trade to get market info
-                    error, data = self.client.request(
-                        entity='smart_trades_v2',
-                        action='get_market_prices',
+                    # Make API call to get ticker info
+                    error, ticker_data = self.client.request(
+                        entity='accounts',
+                        action='currency_rate',
                         payload={
-                            'market_code': market_code,
-                            'account_id': '0'  # Dummy account ID for paper trading
+                            'pair': pair
                         }
                     )
                     
                     if error:
-                        logger.warning(f"Error getting price for {pair}: {error}")
+                        logger.warning(f"Error getting price for {coin}: {error}")
                         continue
                         
-                    if not data or not isinstance(data, dict):
-                        logger.warning(f"Invalid response for {pair}")
-                        continue
-                    
-                    # Extract price from response
-                    bid = data.get('bid')
-                    ask = data.get('ask')
-                    
-                    if bid and ask:
-                        try:
-                            # Use average of bid and ask
-                            price_value = (float(bid) + float(ask)) / 2
-                            if price_value > 0:
-                                prices[pair] = price_value
-                                logger.info(f"Got price for {pair}: {price_value}")
-                            else:
-                                logger.warning(f"Zero or negative price for {pair}: {price_value}")
-                        except (ValueError, TypeError) as e:
-                            logger.warning(f"Invalid price format for {pair}: {e}")
+                    # Extract last price from response
+                    if ticker_data and isinstance(ticker_data, dict):
+                        last_price = ticker_data.get('last')
+                        if last_price:
+                            try:
+                                price_value = float(last_price)
+                                if price_value > 0:
+                                    prices[coin] = price_value
+                                    logger.info(f"Got price for {coin}: {price_value}")
+                                else:
+                                    logger.warning(f"Zero or negative price for {coin}: {price_value}")
+                            except (ValueError, TypeError) as e:
+                                logger.warning(f"Invalid price format for {coin}: {e}")
+                        else:
+                            logger.warning(f"No 'last' price in response for {coin}")
                     else:
-                        logger.warning(f"No bid/ask data in response for {pair}")
-                        
+                        logger.warning(f"Invalid response for {coin}")
+                            
                 except Exception as e:
-                    logger.error(f"Error processing {pair}: {str(e)}")
+                    logger.error(f"Error processing {coin}: {str(e)}")
                     continue
                     
         except Exception as e:

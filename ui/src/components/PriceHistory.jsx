@@ -1,17 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Table, Spinner } from 'react-bootstrap';
 import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 import { fetchBotPrices } from '../api';
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 function PriceHistory({ botId }) {
   const [priceHistory, setPriceHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [coinData, setCoinData] = useState({});
+  const [processedCoins, setProcessedCoins] = useState({});
   const chartRef = useRef(null);
 
   useEffect(() => {
@@ -24,19 +41,19 @@ function PriceHistory({ botId }) {
   useEffect(() => {
     if (priceHistory.length > 0) {
       // Group by coin
-      const newCoinData = {};
+      const newData = {};
       priceHistory.forEach(record => {
-        if (!newCoinData[record.coin]) {
-          newCoinData[record.coin] = {
+        if (!newData[record.coin]) {
+          newData[record.coin] = {
             prices: [],
             timestamps: []
           };
         }
-        newCoinData[record.coin].prices.push(record.price);
-        newCoinData[record.coin].timestamps.push(new Date(record.timestamp).toLocaleTimeString());
+        newData[record.coin].prices.push(record.price);
+        newData[record.coin].timestamps.push(new Date(record.timestamp).toLocaleTimeString());
       });
       
-      setCoinData(newCoinData);
+      setProcessedCoins(newData);
     }
   }, [priceHistory]);
 
@@ -57,11 +74,29 @@ function PriceHistory({ botId }) {
   };
 
   const prepareChartData = () => {
-    if (!Object.keys(coinData).length) return null;
+    if (!priceHistory.length) return { chartData: null, processedData: {} };
 
-    return {
-      labels: coinData[Object.keys(coinData)[0]].timestamps,
-      datasets: Object.entries(coinData).map(([coin, data]) => ({
+    // Group by coin
+    const processedData = {};
+    priceHistory.forEach(record => {
+      if (!processedData[record.coin]) {
+        processedData[record.coin] = {
+          prices: [],
+          timestamps: []
+        };
+      }
+      processedData[record.coin].prices.push(record.price);
+      // Store the timestamp as both raw value and formatted string for different uses
+      processedData[record.coin].timestamps.push(record.timestamp);
+      processedData[record.coin].formattedTimes = processedData[record.coin].formattedTimes || [];
+      processedData[record.coin].formattedTimes.push(new Date(record.timestamp).toLocaleTimeString());
+    });
+    
+    if (!Object.keys(processedData).length) return { chartData: null, processedData: {} };
+
+    const chartData = {
+      labels: processedData[Object.keys(processedData)[0]].formattedTimes,
+      datasets: Object.entries(processedData).map(([coin, data]) => ({
         label: coin,
         data: data.prices,
         fill: false,
@@ -69,20 +104,21 @@ function PriceHistory({ botId }) {
         tension: 0.1
       }))
     };
+
+    return { chartData, processedData };
   };
 
   if (loading) {
     return (
-      <div className="text-center p-4">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
+        <Spinner animation="border" />
+        <span className="ml-2">Loading price history...</span>
       </div>
     );
   }
 
-  // Prepare chart data based on the current coinData
-  const chartData = prepareChartData();
+  // Prepare chart data based on the current price history
+  const { chartData, processedData } = prepareChartData();
 
   return (
     <div>
@@ -90,7 +126,7 @@ function PriceHistory({ botId }) {
         <div className="alert alert-danger mb-4">{error}</div>
       )}
 
-      {chartData ? (
+      {chartData && Object.keys(processedData).length > 0 ? (
         <>
           <div style={{ height: '400px' }}>
             <Line
@@ -131,7 +167,7 @@ function PriceHistory({ botId }) {
               </tr>
             </thead>
             <tbody>
-              {Object.entries(coinData).map(([coin, data]) => {
+              {Object.entries(processedData).map(([coin, data]) => {
                 const currentPrice = data.prices[data.prices.length - 1];
                 const prevPrice = data.prices[0];
                 const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
@@ -143,7 +179,9 @@ function PriceHistory({ botId }) {
                     <td className={priceChange >= 0 ? 'text-success' : 'text-danger'}>
                       {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
                     </td>
-                    <td>{new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString()}</td>
+                    <td>{typeof data.timestamps[data.timestamps.length - 1] === 'string' 
+                        ? new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString() 
+                        : new Date(Date.parse(data.timestamps[data.timestamps.length - 1])).toLocaleString()}</td>
                   </tr>
                 );
               })}

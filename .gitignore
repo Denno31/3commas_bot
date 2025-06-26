@@ -44,3 +44,4 @@ logs/
 Thumbs.db
 test_swap.py
 check_tables.py
+.env
