@@ -24,6 +24,7 @@ function BotList() {
   const loadBots = async () => {
     try {
       const data = await fetchBots();
+      console.log(data)
       setBots(data);
       setError(null);
     } catch (err) {
@@ -46,6 +47,7 @@ function BotList() {
 
   const handleUpdateBot = async (bot) => {
     try {
+      console.log('Updating bot:')
       const data = await updateBot(bot.id, bot);
       setBots(bots.map(b => b.id === bot.id ? data : b));
       setEditBot(null);
@@ -147,8 +149,8 @@ function BotList() {
                         </Badge>
                       </td>
                       <td>{bot.coins.join(', ')}</td>
-                      <td>{bot.threshold_percentage}%</td>
-                      <td>{bot.check_interval}s</td>
+                      <td>{bot.thresholdPercentage}%</td>
+                      <td>{bot.checkInterval}mins</td>
                       <td>
                         <Button
                           variant="outline-primary"

@@ -21,6 +21,7 @@ function TradeHistory({ botId }) {
   const loadTrades = async () => {
     try {
       const data = await fetchBotTrades(botId, filter.status === 'all' ? null : filter.status);
+      console.log(data)
       setTrades(data);
       setError(null);
     } catch (err) {
@@ -122,12 +123,12 @@ function TradeHistory({ botId }) {
         <tbody>
           {filteredTrades.map(trade => (
             <tr key={trade.id}>
-              <td>{new Date(trade.executed_at).toLocaleString()}</td>
-              <td>{trade.from_coin}</td>
-              <td>{trade.to_coin}</td>
+              <td>{new Date(trade.executedAt).toLocaleString()}</td>
+              <td>{trade.fromCoin}</td>
+              <td>{trade.toCoin}</td>
               <td>${trade.amount.toLocaleString()}</td>
-              <td className={trade.price_change >= 0 ? 'text-success' : 'text-danger'}>
-                {trade.price_change >= 0 ? '+' : ''}{trade.price_change.toFixed(2)}%
+              <td className={trade.priceChange >= 0 ? 'text-success' : 'text-danger'}>
+                {trade.priceChange >= 0 ? '+' : ''}{trade.priceChange.toFixed(2)}%
               </td>
               <td>{getStatusBadge(trade.status)}</td>
             </tr>
