@@ -10,13 +10,13 @@ const handleResponse = async (response) => {
 
 // Auth functions
 export async function login(username, password) {
-  const formData = new FormData();
-  formData.append('username', username);
-  formData.append('password', password);
-
+  // Use JSON format instead of FormData
   const response = await fetch(`${API_URL}/api/token`, {
     method: 'POST',
-    body: formData
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ username, password })
   });
 
   if (!response.ok) {

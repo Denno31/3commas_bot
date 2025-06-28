@@ -5,10 +5,6 @@ from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 from passlib.context import CryptContext
 import logging
-import dotenv
-
-# Load .env file
-dotenv.load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -17,23 +13,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Get database URL from environment variable or use SQLite as fallback
-DATABASE_URL = os.getenv('DATABASE_URL')
+# HARDCODED PostgreSQL connection - replace with your actual credentials
+DATABASE_URL = "postgresql://postgres:dennis@localhost:5432/crypto_rebalancer"
+logger.info(f"Using hardcoded PostgreSQL connection")
 
-if not DATABASE_URL:
-    # Default to SQLite if no URL is provided
-    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'crypto_rebalancer.db')
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    DATABASE_URL = f"sqlite:///{DB_PATH}"
-    logger.warning(f"No DATABASE_URL found, using SQLite at {DB_PATH}")
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-else:
-    # PostgreSQL connection
-    if DATABASE_URL.startswith('postgres://'):
-        # Replace postgres:// with postgresql:// for SQLAlchemy
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    logger.info(f"Connecting to PostgreSQL database")
-    engine = create_engine(DATABASE_URL)
+# PostgreSQL connection
+if DATABASE_URL.startswith('postgres://'):
+    # Replace postgres:// with postgresql:// for SQLAlchemy
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+logger.info(f"Connecting to PostgreSQL database")
+engine = create_engine(DATABASE_URL)
 
 print(f"Using database at: {DATABASE_URL}")
 

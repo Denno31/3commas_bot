@@ -23,12 +23,13 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
       if (editBot) {
         setFormData({
           name: editBot.name,
-          coins: editBot.coins,
-          threshold_percentage: editBot.threshold_percentage,
-          check_interval: editBot.check_interval,
-          account_id: editBot.account_id,
-          initial_coin: editBot.initial_coin || '',
-          price_source: editBot.price_source || 'three_commas',
+          // Convert array to comma-separated string if needed
+          coins: Array.isArray(editBot.coins) ? editBot.coins.join(',') : editBot.coins,
+          threshold_percentage: editBot.thresholdPercentage,
+          check_interval: editBot.checkInterval,
+          account_id: editBot.accountId,
+          initial_coin: editBot.initialCoin || '',
+          price_source: editBot.priceSource || 'three_commas',
           enabled: editBot.enabled
         });
       }
@@ -48,25 +49,38 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
   };
 
   const validateForm = () => {
+    console.log(formData)
     const errors = [];
+    
+    // Handle case when coins might be an array or string
+    const coinsArray = Array.isArray(formData.coins) 
+      ? formData.coins 
+      : (typeof formData.coins === 'string' ? formData.coins.split(',').map(c => c.trim()) : []);
+    
     if (!formData.name.match(/^[a-zA-Z0-9_-]+$/)) {
       errors.push('Bot name can only contain letters, numbers, underscores, and hyphens');
     }
-    if (!formData.coins.split(',').every(coin => coin.trim().match(/^[A-Z0-9]+$/))) {
+    
+    if (!coinsArray.every(coin => coin.match(/^[A-Z0-9]+$/))) {
       errors.push('Coins must be uppercase letters and numbers only');
     }
+    
     if (formData.threshold_percentage < 0.1 || formData.threshold_percentage > 100) {
       errors.push('Threshold must be between 0.1 and 100');
     }
+    
     if (formData.check_interval < 1 || formData.check_interval > 1440) {
       errors.push('Check interval must be between 1 and 1440 minutes');
     }
+    
     if (!formData.account_id) {
       errors.push('Trading account is required');
     }
-    if (formData.initial_coin && !formData.coins.split(',').includes(formData.initial_coin)) {
+    
+    if (formData.initial_coin && !coinsArray.includes(formData.initial_coin)) {
       errors.push('Initial coin must be one of the trading pairs');
     }
+    
     return errors;
   };
 
@@ -81,8 +95,11 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
     }
 
     const processedData = {
+      ...(editBot && { id: editBot.id }),
       ...formData,
-      coins: formData.coins.split(',').map(c => c.trim()),
+      coins: Array.isArray(formData.coins) 
+        ? formData.coins 
+        : formData.coins.split(',').map(c => c.trim()),
       threshold_percentage: parseFloat(formData.threshold_percentage),
       check_interval: parseInt(formData.check_interval),
       account_id: formData.account_id.toString()
