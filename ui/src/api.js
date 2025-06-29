@@ -165,6 +165,7 @@ export const fetchSystemConfig = async () => {
 };
 
 export const updateSystemConfig = async (config) => {
+  console.log('configs here',config)
   const response = await fetch(`${API_URL}/api/config/system`, {
     method: 'PUT',
     headers: { 
@@ -185,7 +186,7 @@ export const fetchApiConfigs = async () => {
 
 export const updateApiConfig = async (name, config) => {
   console.log('configs here',config,name)
-  const response = await fetch(`${API_URL}/api/config/api?name=${name}`, {
+  const response = await fetch(`${API_URL}/api/config/api/${name}`, {
     method: 'PUT',
     headers: { 
       'Content-Type': 'application/json',
