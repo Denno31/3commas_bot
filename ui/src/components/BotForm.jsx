@@ -11,6 +11,10 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
     account_id: '',
     initial_coin: '',
     price_source: 'three_commas',
+    preferred_stablecoin: 'USDT',
+    allocation_percentage: '',
+    manual_budget_amount: '',
+    commission_rate: '0.2',
     enabled: true
   });
 
@@ -30,6 +34,10 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
           account_id: editBot.accountId,
           initial_coin: editBot.initialCoin || '',
           price_source: editBot.priceSource || 'three_commas',
+          preferred_stablecoin: editBot.preferredStablecoin || 'USDT',
+          allocation_percentage: editBot.allocationPercentage || '',
+          manual_budget_amount: editBot.manualBudgetAmount || '',
+          commission_rate: editBot.commissionRate || '0.2',
           enabled: editBot.enabled
         });
       }
@@ -115,6 +123,10 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
         account_id: '',
         initial_coin: '',
         price_source: 'three_commas',
+        preferred_stablecoin: 'USDT',
+        allocation_percentage: '',
+        manual_budget_amount: '',
+        commission_rate: '0.2',
         enabled: true
       });
     }
@@ -226,6 +238,99 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             </Form.Select>
             <Form.Text className="text-muted">
               Will fall back to alternative source if primary source fails
+            </Form.Text>
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label>Preferred Stablecoin</Form.Label>
+            <Form.Select
+              value={formData.preferred_stablecoin}
+              onChange={(e) => setFormData({ ...formData, preferred_stablecoin: e.target.value })}
+            >
+              <option value="USDT">USDT (Tether)</option>
+              <option value="USDC">USDC (USD Coin)</option>
+              <option value="BUSD">BUSD (Binance USD)</option>
+              <option value="DAI">DAI</option>
+              <option value="TUSD">TUSD (True USD)</option>
+            </Form.Select>
+            <Form.Text className="text-muted">
+              Stablecoin used for valuation and allocation calculations
+            </Form.Text>
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label>Allocation Percentage (%)</Form.Label>
+            <Form.Control
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              placeholder="Percentage of account to allocate (0-100%)"
+              value={formData.allocation_percentage}
+              onChange={(e) => {
+                // Clear manual budget when percentage is set
+                if (e.target.value) {
+                  setFormData({
+                    ...formData,
+                    allocation_percentage: e.target.value,
+                    manual_budget_amount: ''
+                  });
+                } else {
+                  setFormData({
+                    ...formData,
+                    allocation_percentage: e.target.value
+                  });
+                }
+              }}
+            />
+            <Form.Text className="text-muted">
+              Optional: Set a percentage of available funds to allocate
+            </Form.Text>
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label>Manual Budget Amount</Form.Label>
+            <Form.Control
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={`Amount in ${formData.preferred_stablecoin}`}
+              value={formData.manual_budget_amount}
+              onChange={(e) => {
+                // Clear percentage when manual budget is set
+                if (e.target.value) {
+                  setFormData({
+                    ...formData,
+                    manual_budget_amount: e.target.value,
+                    allocation_percentage: ''
+                  });
+                } else {
+                  setFormData({
+                    ...formData,
+                    manual_budget_amount: e.target.value
+                  });
+                }
+              }}
+            />
+            <Form.Text className="text-muted">
+              Optional: Set a specific budget amount in your preferred stablecoin
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Commission Rate (%)</Form.Label>
+            <Form.Control
+              type="number"
+              step="0.01"
+              min="0"
+              max="10"
+              placeholder="Commission rate percentage (e.g., 0.2 for 0.2%)"
+              value={formData.commission_rate}
+              onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
+              required
+            />
+            <Form.Text className="text-muted">
+              Exchange commission rate for trades (typically 0.1% to 0.5%)
             </Form.Text>
           </Form.Group>
 

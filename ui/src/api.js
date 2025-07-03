@@ -143,6 +143,58 @@ export const fetchBotLogs = async (botId, level = null, limit = 100) => {
   return response.json();
 };
 
+// New function for trade decision logs - filtered on the server for security
+export const fetchTradeDecisionLogs = async (botId, limit = 100) => {
+  const params = new URLSearchParams();
+  if (limit) params.append('limit', limit);
+  console.log(`${API_URL}/api/bots/${botId}/trade-decision-logs?${params}`)
+  
+  const response = await fetch(`${API_URL}/api/bots/${botId}/trade-decision-logs?${params}`, {
+    headers: getAuthHeader()
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      logout();
+      throw new Error('Please login again');
+    }
+    throw new Error('Failed to fetch trade decision logs');
+  }
+  return response.json();
+};
+
+/**
+ * Fetch relative coin deviation data for charting
+ * @param {string} botId - ID of the bot to fetch deviations for
+ * @param {Object} options - Optional parameters
+ * @param {Date|string} options.from - Start date for data range
+ * @param {Date|string} options.to - End date for data range
+ * @param {string} options.baseCoin - Filter by base coin
+ * @param {string} options.targetCoin - Filter by target coin
+ * @returns {Promise<Object>} - Deviation data for charting
+ */
+export const fetchBotDeviations = async (botId, options = {}) => {
+  const params = new URLSearchParams();
+  if (options.from) params.append('from', new Date(options.from).toISOString());
+  if (options.to) params.append('to', new Date(options.to).toISOString());
+  if (options.baseCoin) params.append('baseCoin', options.baseCoin);
+  if (options.targetCoin) params.append('targetCoin', options.targetCoin);
+  
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  
+  const response = await fetch(`${API_URL}/api/deviations/bots/${botId}${queryString}`, {
+    headers: getAuthHeader()
+  });
+  
+  if (!response.ok) {
+    if (response.status === 401) {
+      logout();
+      throw new Error('Please login again');
+    }
+    throw new Error('Failed to fetch deviation data');
+  }
+  return response.json();
+};
+
 export const fetchBotState = async (botId) => {
   const response = await fetch(`${API_URL}/api/bots/${botId}/state`, {
     headers: getAuthHeader()
@@ -216,4 +268,21 @@ export const downloadDatabaseBackup = async () => {
   a.click();
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
+};
+
+/**
+ * Fetch available coins from a 3Commas account
+ * @param {string} accountId - ID of the 3Commas account
+ * @returns {Promise<Array>} - List of available coins with balances
+ */
+export const fetchAvailableCoins = async (accountId) => {
+  if (!accountId) {
+    throw new Error('Account ID is required');
+  }
+
+  const response = await fetch(`${API_URL}/api/accounts/${accountId}/coins`, {
+    headers: getAuthHeader()
+  });
+  
+  return handleResponse(response);
 };

@@ -91,7 +91,8 @@ function TradeHistory({ botId }) {
             >
               <option value="date">Date</option>
               <option value="price_change">Price Change</option>
-              <option value="amount">Amount</option>
+              <option value="from_amount">Amount</option>
+              <option value="commission_amount">Commission</option>
             </Form.Select>
           </Form.Group>
         </Col>
@@ -117,6 +118,7 @@ function TradeHistory({ botId }) {
             <th>To</th>
             <th>Amount</th>
             <th>Price Change</th>
+            <th>Commission</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -126,16 +128,31 @@ function TradeHistory({ botId }) {
               <td>{new Date(trade.executedAt).toLocaleString()}</td>
               <td>{trade.fromCoin}</td>
               <td>{trade.toCoin}</td>
-              <td>${trade.amount.toLocaleString()}</td>
+              <td>
+                {trade.fromAmount ? `${trade.fromAmount.toLocaleString()} ${trade.fromCoin}` : '-'}
+                <br />
+                <small className="text-muted">
+                  → {trade.toAmount ? `${trade.toAmount.toLocaleString()} ${trade.toCoin}` : '-'}
+                </small>
+              </td>
               <td className={trade.priceChange >= 0 ? 'text-success' : 'text-danger'}>
                 {trade.priceChange >= 0 ? '+' : ''}{trade.priceChange.toFixed(2)}%
+              </td>
+              <td>
+                {trade.commissionAmount ? 
+                  <>
+                    {trade.commissionAmount.toFixed(8)}
+                    <br />
+                    <small className="text-muted">({(trade.commissionRate * 100).toFixed(2)}%)</small>
+                  </>
+                  : '-'}
               </td>
               <td>{getStatusBadge(trade.status)}</td>
             </tr>
           ))}
           {filteredTrades.length === 0 && (
             <tr>
-              <td colSpan="6" className="text-center text-muted">No trades found</td>
+              <td colSpan="7" className="text-center text-muted">No trades found</td>
             </tr>
           )}
         </tbody>
