@@ -145,7 +145,7 @@ function BotDetails({ bot, onClose }) {
                                 {new Date(state.lastPriceUpdate).toLocaleString()}
                                 {state.lastPriceSource && (
                                   <span className="ms-2 text-muted">
-                                    via {state.lastPriceSource === 'three_commas' ? 'Three Commas' : 'CoinGecko'}
+                                    {/* via {state.lastPriceSource === 'three_commas' ? 'Three Commas' : 'CoinGecko'} */}
                                   </span>
                                 )}
                               </>

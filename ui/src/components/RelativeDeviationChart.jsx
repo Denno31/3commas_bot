@@ -51,6 +51,11 @@ const RelativeDeviationChart = ({ botId }) => {
         
         const result = await fetchBotDeviations(botId, options);
         if (result.success) {
+          // Ensure we preserve the selected base coin in case of empty data
+          if (baseCoin && !result.coins.includes(baseCoin)) {
+            // Add the selected coin to the list even if no data is available
+            result.coins = [...result.coins, baseCoin];
+          }
           setDeviationData(result);
         } else {
           setError('Failed to load deviation data');
@@ -136,13 +141,15 @@ const RelativeDeviationChart = ({ botId }) => {
       dataToShow[key] = timeSeriesData[key];
     });
     
-    // No data to display
+    // No data to display for the selected coin
     if (Object.keys(dataToShow).length === 0) {
       return (
         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
-          <p className="text-muted">
-            No data available for the selected filters
-          </p>
+          <Alert variant="info" className="text-center">
+            {baseCoin ? 
+              `No deviation data available for ${baseCoin} in the selected time range. Try selecting a different coin or extending the time range.` : 
+              'No deviation data available for the selected filters.'}
+          </Alert>
         </div>
       );
     }
@@ -231,9 +238,11 @@ const RelativeDeviationChart = ({ botId }) => {
     if (!coins || coins.length === 0 || !latestDeviations) {
       return (
         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
-          <p className="text-muted">
-            No data available for heatmap visualization
-          </p>
+          <Alert variant="info" className="text-center">
+            {baseCoin ? 
+              `No heatmap data available for ${baseCoin} in the selected time range. Try selecting a different coin or extending the time range.` : 
+              'No data available for heatmap visualization.'}
+          </Alert>
         </div>
       );
     }
