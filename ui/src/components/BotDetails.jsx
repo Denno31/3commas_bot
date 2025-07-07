@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Nav, Tab, Row, Col } from 'react-bootstrap';
+import { Modal, Button, Tab, Nav, Row, Col, Badge, Spinner, Alert } from 'react-bootstrap';
+import { fetchBotState, fetchBotLogs, fetchAvailableCoins } from '../api';
 import PriceHistory from './PriceHistory';
 import TradeHistory from './TradeHistory';
 import TradeDecisionLogs from './TradeDecisionLogs';
 import RelativeDeviationChart from './RelativeDeviationChart';
-import { fetchBotState, fetchBotLogs } from '../api';
 import './BotDetails.css';
 
 
@@ -26,6 +26,8 @@ function BotDetails({ bot, onClose }) {
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('state');
+  const [coinUsdValue, setCoinUsdValue] = useState(null);
+  const [loadingValue, setLoadingValue] = useState(false);
 
   useEffect(() => {
     const updateState = async () => {
@@ -46,6 +48,76 @@ function BotDetails({ bot, onClose }) {
 
     return () => clearInterval(interval);
   }, [bot.id]);
+  
+  // Fetch USDT value whenever current coin changes
+  useEffect(() => {
+    const fetchCoinValue = async () => {
+      if (!state || !state.currentCoin || state.currentCoin === bot.preferredStablecoin) {
+        setCoinUsdValue(null);
+        return;
+      }
+      
+      setLoadingValue(true);
+      try {
+        // Get the account ID from the bot object
+        // In our system, the 3Commas account ID is likely stored directly in the bot config
+        const accountId = bot.accountId || bot.account_id;
+        
+        if (!accountId) {
+          console.log('Bot data:', bot); // Log the bot data to understand its structure
+          console.error('No accountId available to fetch coin value');
+          setLoadingValue(false);
+          return;
+        }
+        
+        // Fetch available coins from 3Commas API
+        const response = await fetchAvailableCoins(accountId);
+        
+        // Check if we have a valid response with success status
+        if (!response || !response.success) {
+          console.error('Failed to fetch account coins', response?.message || 'Invalid response');
+          setLoadingValue(false);
+          return;
+        }
+        
+        // In our backend, the coins are in the 'data' property, not 'coins'
+        const coins = response.data;
+        
+        // Make sure the coins array exists
+        if (!coins || !Array.isArray(coins)) {
+          console.error('No coins array in response', response);
+          setLoadingValue(false);
+          return;
+        }
+        
+        try {
+          // In our backend API, the coin is identified by 'coin' property, not 'symbol'
+          const coin = coins.find(c => c && c.coin === state.currentCoin);
+            
+          if (coin) {
+            setCoinUsdValue({
+              usdValue: Number(coin.amountInUsd) || 0,
+              amount: Number(coin.amount) || 0
+              // Note: BTC value may not be available in our API response
+            });
+          } else {
+            console.log(`Coin ${state.currentCoin} not found in available coins`);
+            setCoinUsdValue(null);
+          }
+        } catch (findError) {
+          console.error('Error processing coin data:', findError);
+          setCoinUsdValue(null);
+        }
+      } catch (error) {
+        console.error('Error fetching coin value:', error);
+        setCoinUsdValue(null);
+      } finally {
+        setLoadingValue(false);
+      }
+    };
+    
+    fetchCoinValue();
+  }, [state?.currentCoin, bot.id, bot.apiConfig, bot.preferredStablecoin]);
 
   return (
     <Modal show={true} onHide={onClose} size="lg" className="bot-details-modal">
@@ -88,6 +160,21 @@ function BotDetails({ bot, onClose }) {
                           <strong>Current Coin</strong>
                           <div className="coin-detail-value">
                             {state.currentCoin || 'Not holding any coin'}
+                            {state.currentCoin && (
+                              <>
+                                {loadingValue ? (
+                                  <span className="ms-2">
+                                    <small><Spinner animation="border" size="sm" /> Loading value...</small>
+                                  </span>
+                                ) : coinUsdValue ? (
+                                  <span className="ms-2">
+                                    <Badge bg="info">
+                                      {coinUsdValue.amount.toFixed(8)} {state.currentCoin} ≈ {coinUsdValue.usdValue.toFixed(2)} {bot.preferredStablecoin || 'USDT'}
+                                    </Badge>
+                                  </span>
+                                ) : null}
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="coin-detail-item">
