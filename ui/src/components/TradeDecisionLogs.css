@@ -1,0 +1,51 @@
+.trade-decision-logs .log-entry {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.trade-decision-logs .log-entry:last-child {
+  border-bottom: none;
+}
+
+.trade-decision-logs .log-time {
+  color: #6c757d;
+  margin-right: 8px;
+}
+
+.trade-decision-logs .badge {
+  margin-right: 8px;
+  display: inline-block;
+  min-width: 60px;
+  text-align: center;
+}
+
+.trade-decision-logs .log-message {
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.trade-decision-logs .raw-logs {
+  font-family: 'Courier New', monospace;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.trade-decision-logs .card-header {
+  font-weight: 500;
+  padding: 8px 12px;
+}
+
+.trade-decision-logs table {
+  margin-bottom: 0;
+}
+
+.trade-decision-logs .accordion-button:not(.collapsed) {
+  background-color: #f8f9fa;
+  color: #212529;
+}
+
+.trade-decision-logs .accordion-item {
+  margin-bottom: 8px;
+}

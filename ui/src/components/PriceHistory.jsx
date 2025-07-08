@@ -88,19 +88,19 @@ function PriceHistory({ botId }) {
       processedData[record.coin].prices.push(record.price);
       // Store the timestamp as both raw value and formatted string for different uses
       processedData[record.coin].timestamps.push(record.timestamp);
-      processedData[record.coin].formattedTimes = processedData[record.coin].formattedTimes || [];
-      processedData[record.coin].formattedTimes.push(new Date(record.timestamp).toLocaleTimeString());
     });
     
     if (!Object.keys(processedData).length) return { chartData: null, processedData: {} };
 
+    // Use raw timestamps as labels and let the chart format them
+    // This gives us more control over the formatting
     const chartData = {
-      labels: processedData[Object.keys(processedData)[0]].formattedTimes,
-      datasets: Object.entries(processedData).map(([coin, data]) => ({
+      labels: processedData[Object.keys(processedData)[0]].timestamps,
+      datasets: Object.entries(processedData).map(([coin, data], index) => ({
         label: coin,
         data: data.prices,
         fill: false,
-        borderColor: `hsl(${Math.random() * 360}, 70%, 50%)`,
+        borderColor: `hsl(${index * 30 % 360}, 70%, 50%)`, // Use fixed colors based on index for consistency
         tension: 0.1
       }))
     };
@@ -128,7 +128,9 @@ function PriceHistory({ botId }) {
 
       {chartData && Object.keys(processedData).length > 0 ? (
         <>
-          <div style={{ height: '400px' }}>
+          <Card className="mb-4">
+            <Card.Body>
+              <div style={{ height: '400px' }}>
             <Line
               ref={chartRef}
               data={chartData}
@@ -136,11 +138,43 @@ function PriceHistory({ botId }) {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
+                  x: {
+                    grid: {
+                      display: true,
+                      drawOnChartArea: true,
+                      drawTicks: true,
+                    },
+                    ticks: {
+                      maxTicksLimit: 8, // Limit number of ticks to reduce clutter
+                      maxRotation: 0,   // Don't rotate labels
+                      autoSkip: true,   // Skip labels that would overlap
+                      callback: function(value, index, ticks) {
+                        const date = new Date(processedData[Object.keys(processedData)[0]].timestamps[value]);
+                        // Format based on data points density
+                        if (ticks.length > 12) {
+                          return `${date.getHours()}:00`;
+                        } else {
+                          return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                        }
+                      }
+                    },
+                  },
                   y: {
                     beginAtZero: false,
                     ticks: {
                       callback: value => `$${value.toLocaleString()}`
+                    },
+                    grid: {
+                      display: true,
                     }
+                  }
+                },
+                layout: {
+                  padding: {
+                    top: 20,
+                    right: 20,
+                    bottom: 30,
+                    left: 20
                   }
                 },
                 plugins: {
@@ -150,12 +184,31 @@ function PriceHistory({ botId }) {
                     }
                   },
                   legend: {
-                    display: true
+                    display: true,
+                    position: 'top',
+                    labels: {
+                      boxWidth: 12,
+                      usePointStyle: true,
+                      padding: 20
+                    }
+                  },
+                  title: {
+                    display: true,
+                    text: 'Price History (Last 24 Hours)',
+                    font: {
+                      size: 16
+                    },
+                    padding: {
+                      top: 10,
+                      bottom: 20
+                    }
                   }
                 }
               }}
             />
-          </div>
+              </div>
+            </Card.Body>
+          </Card>
           
           <Table className="mt-4" hover>
             <thead>

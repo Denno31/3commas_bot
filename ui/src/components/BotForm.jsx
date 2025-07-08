@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Button, Alert } from 'react-bootstrap';
+import { Modal, Form, Button, Alert, Tabs, Tab, Badge } from 'react-bootstrap';
 import { fetchAccounts as fetchAccountsApi } from '../api';
+import CoinSelector from './CoinSelector';
 
 const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
   const [formData, setFormData] = useState({
@@ -11,8 +12,15 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
     account_id: '',
     initial_coin: '',
     price_source: 'three_commas',
+    preferred_stablecoin: 'USDT',
+    allocation_percentage: '',
+    manual_budget_amount: '',
+    commission_rate: '0.2',
     enabled: true
   });
+
+  const [selectedCoins, setSelectedCoins] = useState([]);
+  const [coinSelectionMode, setCoinSelectionMode] = useState('manual'); // 'manual' or '3commas'
 
   const [accounts, setAccounts] = useState([]);
   const [error, setError] = useState(null);
@@ -21,17 +29,30 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
     if (show) {
       fetchAccounts();
       if (editBot) {
+        // Convert array to comma-separated string if needed
+        const coinsList = Array.isArray(editBot.coins) ? editBot.coins : 
+          (typeof editBot.coins === 'string' ? editBot.coins.split(',').map(c => c.trim()) : []);
+        
         setFormData({
           name: editBot.name,
-          // Convert array to comma-separated string if needed
           coins: Array.isArray(editBot.coins) ? editBot.coins.join(',') : editBot.coins,
           threshold_percentage: editBot.thresholdPercentage,
           check_interval: editBot.checkInterval,
           account_id: editBot.accountId,
           initial_coin: editBot.initialCoin || '',
           price_source: editBot.priceSource || 'three_commas',
+          preferred_stablecoin: editBot.preferredStablecoin || 'USDT',
+          allocation_percentage: editBot.allocationPercentage || '',
+          manual_budget_amount: editBot.manualBudgetAmount || '',
+          commission_rate: editBot.commissionRate || '0.2',
           enabled: editBot.enabled
         });
+        
+        // Initialize selected coins array
+        setSelectedCoins(coinsList);
+      } else {
+        // Reset coin selection for new bot
+        setSelectedCoins([]);
       }
     }
   }, [show, editBot]);
@@ -115,6 +136,10 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
         account_id: '',
         initial_coin: '',
         price_source: 'three_commas',
+        preferred_stablecoin: 'USDT',
+        allocation_percentage: '',
+        manual_budget_amount: '',
+        commission_rate: '0.2',
         enabled: true
       });
     }
@@ -161,18 +186,88 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             </Form.Select>
           </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Trading Pairs</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="BTC,ETH,USDT (comma-separated)"
-              value={formData.coins}
-              onChange={(e) => setFormData({ ...formData, coins: e.target.value.toUpperCase() })}
-              required
-            />
-            <Form.Text className="text-muted">
-              Enter comma-separated list of coins (e.g., BTC,ETH,USDT)
-            </Form.Text>
+          <Form.Group className="mb-3" controlId="formCoins">
+            <Form.Label>Coins</Form.Label>
+            
+            <Tabs
+              activeKey={coinSelectionMode}
+              onSelect={(k) => setCoinSelectionMode(k)}
+              className="mb-3"
+            >
+              <Tab eventKey="manual" title="Manual Entry">
+                <Form.Control
+                  type="text"
+                  placeholder="Comma-separated list of coins (e.g. BTC,ETH,ADA)"
+                  value={formData.coins}
+                  onChange={(e) => {
+                    setFormData({ ...formData, coins: e.target.value });
+                    setSelectedCoins(e.target.value.split(',').map(c => c.trim()).filter(c => c));
+                  }}
+                  required
+                />
+                <Form.Text className="text-muted">
+                  Enter coin symbols separated by commas
+                </Form.Text>
+              </Tab>
+              
+              <Tab eventKey="3commas" title="Select from 3Commas">
+                {formData.account_id ? (
+                  <div className="mt-2">
+                    {selectedCoins.length > 0 && (
+                      <div className="selected-coins mb-3">
+                        <h6>Selected coins:</h6>
+                        <div className="d-flex flex-wrap gap-2">
+                          {selectedCoins.map(coin => (
+                            <Badge 
+                              key={coin} 
+                              bg="primary" 
+                              className="p-2 me-1 mb-1 d-flex align-items-center"
+                            >
+                              {coin}
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="ms-1 p-0 px-1 py-0 d-flex align-items-center"
+                                style={{ fontSize: '0.65rem', lineHeight: 1 }}
+                                onClick={() => {
+                                  const newSelected = selectedCoins.filter(c => c !== coin);
+                                  setSelectedCoins(newSelected);
+                                  setFormData({ ...formData, coins: newSelected.join(',') });
+                                }}
+                              >
+                                ×
+                              </Button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <Form.Text className="text-muted">
+                          {selectedCoins.length} coin(s) selected
+                        </Form.Text>
+                      </div>
+                    )}
+                    
+                    <CoinSelector
+                      accountId={formData.account_id}
+                      selectedCoins={selectedCoins}
+                      onCoinSelect={(coin) => {
+                        if (!selectedCoins.includes(coin)) {
+                          const newSelected = [...selectedCoins, coin];
+                          setSelectedCoins(newSelected);
+                          setFormData({ ...formData, coins: newSelected.join(',') });
+                        }
+                      }}
+                      apiBaseUrl={window.location.origin.includes('localhost') ? 
+                        'http://localhost:3000/api' : 
+                        `${window.location.origin}/api`}
+                    />
+                  </div>
+                ) : (
+                  <Alert variant="warning">
+                    Please select a 3Commas account first to view available coins.
+                  </Alert>
+                )}
+              </Tab>
+            </Tabs>
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -226,6 +321,99 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             </Form.Select>
             <Form.Text className="text-muted">
               Will fall back to alternative source if primary source fails
+            </Form.Text>
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label>Preferred Stablecoin</Form.Label>
+            <Form.Select
+              value={formData.preferred_stablecoin}
+              onChange={(e) => setFormData({ ...formData, preferred_stablecoin: e.target.value })}
+            >
+              <option value="USDT">USDT (Tether)</option>
+              <option value="USDC">USDC (USD Coin)</option>
+              <option value="BUSD">BUSD (Binance USD)</option>
+              <option value="DAI">DAI</option>
+              <option value="TUSD">TUSD (True USD)</option>
+            </Form.Select>
+            <Form.Text className="text-muted">
+              Stablecoin used for valuation and allocation calculations
+            </Form.Text>
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label>Allocation Percentage (%)</Form.Label>
+            <Form.Control
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              placeholder="Percentage of account to allocate (0-100%)"
+              value={formData.allocation_percentage}
+              onChange={(e) => {
+                // Clear manual budget when percentage is set
+                if (e.target.value) {
+                  setFormData({
+                    ...formData,
+                    allocation_percentage: e.target.value,
+                    manual_budget_amount: ''
+                  });
+                } else {
+                  setFormData({
+                    ...formData,
+                    allocation_percentage: e.target.value
+                  });
+                }
+              }}
+            />
+            <Form.Text className="text-muted">
+              Optional: Set a percentage of available funds to allocate
+            </Form.Text>
+          </Form.Group>
+          
+          <Form.Group className="mb-3">
+            <Form.Label>Manual Budget Amount</Form.Label>
+            <Form.Control
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={`Amount in ${formData.preferred_stablecoin}`}
+              value={formData.manual_budget_amount}
+              onChange={(e) => {
+                // Clear percentage when manual budget is set
+                if (e.target.value) {
+                  setFormData({
+                    ...formData,
+                    manual_budget_amount: e.target.value,
+                    allocation_percentage: ''
+                  });
+                } else {
+                  setFormData({
+                    ...formData,
+                    manual_budget_amount: e.target.value
+                  });
+                }
+              }}
+            />
+            <Form.Text className="text-muted">
+              Optional: Set a specific budget amount in your preferred stablecoin
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Commission Rate (%)</Form.Label>
+            <Form.Control
+              type="number"
+              step="0.01"
+              min="0"
+              max="10"
+              placeholder="Commission rate percentage (e.g., 0.2 for 0.2%)"
+              value={formData.commission_rate}
+              onChange={(e) => setFormData({ ...formData, commission_rate: e.target.value })}
+              required
+            />
+            <Form.Text className="text-muted">
+              Exchange commission rate for trades (typically 0.1% to 0.5%)
             </Form.Text>
           </Form.Group>
 
