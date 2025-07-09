@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert, Tabs, Tab, Badge } from 'react-bootstrap';
 import { fetchAccounts as fetchAccountsApi } from '../api';
 import CoinSelector from './CoinSelector';
+import { API_URL } from '../config';
 
 const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
   const [formData, setFormData] = useState({
@@ -256,9 +257,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
                           setFormData({ ...formData, coins: newSelected.join(',') });
                         }
                       }}
-                      apiBaseUrl={window.location.origin.includes('localhost') ? 
-                        'http://localhost:3000/api' : 
-                        `${window.location.origin}/api`}
+                      apiBaseUrl={`${API_URL}/api`}
                     />
                   </div>
                 ) : (
