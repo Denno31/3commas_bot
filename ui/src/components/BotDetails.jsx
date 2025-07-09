@@ -52,6 +52,7 @@ function BotDetails({ bot, onClose }) {
   // Fetch USDT value whenever current coin changes
   useEffect(() => {
     const fetchCoinValue = async () => {
+      console.log('fetching coin value',state)
       if (!state || !state.currentCoin || state.currentCoin === bot.preferredStablecoin) {
         setCoinUsdValue(null);
         return;
@@ -64,7 +65,7 @@ function BotDetails({ bot, onClose }) {
         const accountId = bot.accountId || bot.account_id;
         
         if (!accountId) {
-          console.log('Bot data:', bot); // Log the bot data to understand its structure
+           // Log the bot data to understand its structure
           console.error('No accountId available to fetch coin value');
           setLoadingValue(false);
           return;
@@ -73,15 +74,17 @@ function BotDetails({ bot, onClose }) {
         // Fetch available coins from 3Commas API
         const response = await fetchAvailableCoins(accountId);
         
+        
         // Check if we have a valid response with success status
-        if (!response || !response.success) {
-          console.error('Failed to fetch account coins', response?.message || 'Invalid response');
+        if (!response) {
+          
+          console.error('Failed toccc fetch account coins', response?.message || 'Invalid response');
           setLoadingValue(false);
           return;
         }
         
         // In our backend, the coins are in the 'data' property, not 'coins'
-        const coins = response.data;
+        const coins = response;
         
         // Make sure the coins array exists
         if (!coins || !Array.isArray(coins)) {
@@ -92,6 +95,7 @@ function BotDetails({ bot, onClose }) {
         
         try {
           // In our backend API, the coin is identified by 'coin' property, not 'symbol'
+          console.log(coins)
           const coin = coins.find(c => c && c.coin === state.currentCoin);
             
           if (coin) {

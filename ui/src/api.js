@@ -276,6 +276,7 @@ export const downloadDatabaseBackup = async () => {
  * @returns {Promise<Array>} - List of available coins with balances
  */
 export const fetchAvailableCoins = async (accountId) => {
+  console.log('fetching coins',accountId)
   if (!accountId) {
     throw new Error('Account ID is required');
   }
