@@ -325,7 +325,7 @@ function BotDetails({ bot, onClose }) {
                   </Tab.Pane>
                   <Tab.Pane eventKey="assets">
                     <div className="p-3">
-                      <h5>Bot Assets</h5>
+                      <h5>Exchange Assets</h5>
                       {loadingAssets ? (
                         <div className="text-center p-4">
                           <Spinner animation="border" variant="primary" />

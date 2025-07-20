@@ -121,85 +121,118 @@ function BotList() {
         editBot={editBot}
       />
 
-      <Row>
-        <Col md={12}>
-          <Card>
-            <Card.Header>
-              <h5 className="mb-0">Bot List</h5>
-            </Card.Header>
-            <Card.Body className="p-0">
-              <Table hover responsive>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Coins</th>
-                    <th>Threshold</th>
-                    <th>Interval</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bots.map((bot) => (
-                    <tr key={bot.id} onClick={() => setSelectedBot(bot)} style={{ cursor: 'pointer' }}>
-                      <td>{bot.name}</td>
-                      <td>
-                        <Badge bg={bot.enabled ? 'success' : 'secondary'}>
-                          {bot.enabled ? 'Active' : 'Disabled'}
-                        </Badge>
-                      </td>
-                      <td>{bot.coins.join(', ')}</td>
-                      <td>{bot.thresholdPercentage}%</td>
-                      <td>{bot.checkInterval}mins</td>
-                      <td>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          className="me-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditBot(bot);
-                          }}
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </Button>
-                        <Button
-                          variant={bot.enabled ? 'outline-secondary' : 'outline-success'}
-                          size="sm"
-                          className="me-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleBot(bot.id);
-                          }}
-                        >
-                          <i className={`bi bi-${bot.enabled ? 'pause' : 'play'}`}></i>
-                        </Button>
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteBot(bot.id);
-                          }}
-                        >
-                          <i className="bi bi-trash"></i>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Card.Body>
-          </Card>
-        </Col>
+      <Row className="mb-4">
+        {bots.length === 0 ? (
+          <Col>
+            <div className="text-center p-5">
+              <i className="bi bi-robot" style={{ fontSize: '3rem', opacity: 0.3 }}></i>
+              <h5 className="mt-3">No bots created yet</h5>
+              <p className="text-muted">Click the "Create Bot" button above to get started</p>
+            </div>
+          </Col>
+        ) : (
+          bots.map((bot) => (
+            <Col key={bot.id} xs={12} md={6} lg={4} className="mb-4">
+              <Card 
+                className={`h-100 bot-card ${bot.enabled ? 'border-success' : 'border-secondary'}`}
+                onClick={() => setSelectedBot(bot)}
+                style={{ cursor: 'pointer', transition: 'all 0.2s ease-in-out' }}
+              >
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0 text-truncate" title={bot.name}>{bot.name}</h5>
+                  <Badge bg={bot.enabled ? 'success' : 'secondary'} className="ms-2">
+                    {bot.enabled ? 'Active' : 'Disabled'}
+                  </Badge>
+                </Card.Header>
+                
+                <Card.Body>
+                  <div className="mb-3">
+                    <small className="text-muted">Current Coin</small>
+                    <h6>{bot.currentCoin || 'None'}</h6>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <small className="text-muted">Trading Coins</small>
+                    <div className="d-flex flex-wrap gap-1 mt-1">
+                      {bot.coins.map(coin => (
+                        <Badge key={coin} bg="light" text="dark" className="me-1 mb-1">{coin}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="row g-2">
+                    <div className="col-6">
+                      <small className="text-muted">Threshold</small>
+                      <h6>{bot.thresholdPercentage}%</h6>
+                    </div>
+                    <div className="col-6">
+                      <small className="text-muted">Check Interval</small>
+                      <h6>{bot.checkInterval} mins</h6>
+                    </div>
+                  </div>
 
-        {selectedBot && (
-          <BotDetails
-            bot={selectedBot}
-            onClose={() => setSelectedBot(null)}
-          />
+                  {bot.lastTrade && (
+                    <div className="mt-3">
+                      <small className="text-muted">Last Trade</small>
+                      <div className="d-flex align-items-center">
+                        <span className="me-1">{bot.lastTrade.fromCoin}</span>
+                        <i className="bi bi-arrow-right mx-1 text-muted"></i>
+                        <span>{bot.lastTrade.toCoin}</span>
+                        <span className="ms-auto text-muted small">
+                          {new Date(bot.lastTrade.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </Card.Body>
+                
+                <Card.Footer className="bg-transparent">
+                  <div className="d-flex justify-content-between">
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditBot(bot);
+                      }}
+                    >
+                      <i className="bi bi-pencil me-1"></i> Edit
+                    </Button>
+                    <Button
+                      variant={bot.enabled ? 'outline-secondary' : 'outline-success'}
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleBot(bot.id);
+                      }}
+                    >
+                      <i className={`bi bi-${bot.enabled ? 'pause' : 'play'} me-1`}></i>
+                      {bot.enabled ? 'Pause' : 'Start'}
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteBot(bot.id);
+                      }}
+                    >
+                      <i className="bi bi-trash me-1"></i> Delete
+                    </Button>
+                  </div>
+                </Card.Footer>
+              </Card>
+            </Col>
+          ))
         )}
       </Row>
+
+      {selectedBot && (
+        <BotDetails
+          bot={selectedBot}
+          onClose={() => setSelectedBot(null)}
+        />
+      )}
     </Container>
   );
 }
