@@ -122,8 +122,8 @@ const RelativeDeviationChart = ({ botId }) => {
 
   // Helper function to format deviation values for display
   const formatDeviation = (value) => {
-    // Convert to percentage with 2 decimal places
-    return `${(value * 100).toFixed(2)}%`;
+    // Data already comes as percentage values, just format with 2 decimal places
+    return `${value.toFixed(2)}%`;
   };
 
   const renderLineChart = () => {
@@ -224,8 +224,10 @@ const RelativeDeviationChart = ({ botId }) => {
               dataKey={key}
               name={key.replace('_', ' → ')}
               stroke={COLORS[index % COLORS.length]}
-              dot={false}
-              activeDot={{ r: 6 }}
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              connectNulls={true}
+              activeDot={{ r: 6, strokeWidth: 1, stroke: '#fff' }}
             />
           ))}
         </LineChart>
