@@ -185,6 +185,7 @@ export const fetchBotDeviations = async (botId, options = {}) => {
     headers: getAuthHeader()
   });
   
+
   if (!response.ok) {
     if (response.status === 401) {
       logout();

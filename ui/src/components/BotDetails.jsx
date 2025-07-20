@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Tab, Nav, Row, Col, Badge, Spinner, Alert, Table } from 'react-bootstrap';
+import { Modal, Button, Tab, Nav, Row, Col, Badge, Spinner, Alert, Table, Card } from 'react-bootstrap';
 import { fetchBotState, fetchBotLogs, fetchAvailableCoins } from '../api';
 import PriceHistory from './PriceHistory';
 import TradeHistory from './TradeHistory';
@@ -21,7 +21,6 @@ const LogViewer = ({ logs }) => (
 );
 
 function BotDetails({ bot, onClose }) {
- 
   const [state, setState] = useState(null);
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState(null);
@@ -30,8 +29,6 @@ function BotDetails({ bot, onClose }) {
   const [loadingValue, setLoadingValue] = useState(false);
   const [botAssets, setBotAssets] = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
-
-
 
   useEffect(() => {
     const updateState = async () => {
@@ -166,239 +163,564 @@ function BotDetails({ bot, onClose }) {
   };
   
   return (
-    <Modal show={true} onHide={onClose} size="lg" className="bot-details-modal">
-      <Modal.Header closeButton>
-        <Modal.Title>{bot.name}</Modal.Title>
+    <Modal
+      show={true}
+      onHide={onClose}
+      dialogClassName="bot-details-modal responsive-modal"
+      aria-labelledby="bot-details-modal"
+      size="xl"
+    >
+      <Modal.Header 
+        closeButton 
+        style={{ 
+          background: bot.enabled 
+            ? 'linear-gradient(to right, rgba(28, 200, 138, 0.1), rgba(54, 185, 204, 0.1))' 
+            : 'linear-gradient(to right, rgba(108, 117, 125, 0.05), rgba(108, 117, 125, 0.1))',
+          borderBottom: bot.enabled 
+            ? '2px solid rgba(28, 200, 138, 0.3)' 
+            : '2px solid rgba(108, 117, 125, 0.3)',
+        }}
+      >
+        <Modal.Title className="w-100">
+          <div className="d-flex align-items-center flex-wrap">
+            <i className={`bi bi-robot me-2 fs-3 ${bot.enabled ? 'text-success' : 'text-secondary'}`}></i>
+            <span className="fs-4 me-2" style={{ color: '#3a3b45', fontWeight: '600' }}>{bot.name}</span>
+            <Badge 
+              bg={bot.enabled ? "success" : "secondary"} 
+              style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}
+            >
+              <i className={`bi bi-${bot.enabled ? 'play-fill' : 'pause-fill'} me-1`}></i>
+              {bot.enabled ? "Active" : "Disabled"}
+            </Badge>
+          </div>
+        </Modal.Title>
       </Modal.Header>
-      <Modal.Body className="p-0">
-        {error && (
-          <div className="alert alert-danger mb-4">{error}</div>
-        )}
-        <Tab.Container activeKey={activeTab} onSelect={setActiveTab}>
-          <Row className="m-0">
-            <Col sm={12} className="p-0">
-              <Nav variant="tabs" className="px-3 pt-2">
-                <Nav.Item>
-                  <Nav.Link eventKey="state">Current State</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="price-history">Price History</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="trade-history">Trade History</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="trade-decisions">Trade Decisions</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="assets">Assets</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="deviation-chart">Deviation Chart</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="logs">Raw Logs</Nav.Link>
-                </Nav.Item>
-              </Nav>
-              <div className="p-3">
+      <Modal.Body className="pt-0">
+        <Tab.Container id="bot-details-tabs" defaultActiveKey={activeTab}>
+          <Row className="g-3">
+            <Col lg={3} md={4} sm={12} className="mb-3">
+              <div className="p-2 rounded shadow-sm mb-3" style={{ backgroundColor: 'rgba(248, 249, 252, 0.7)' }}>
+                <Nav variant="pills" className="flex-column nav-custom d-flex flex-md-column flex-row flex-wrap">
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="state" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'state' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-info-circle me-2 text-primary"></i>
+                      <span>State</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="price-history" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'price-history' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-graph-up me-2 text-primary"></i>
+                      <span>Price History</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="trade-history" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'trade-history' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-clock-history me-2 text-info"></i>
+                      <span>Trade History</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="trade-logs" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'trade-logs' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-list-check me-2 text-success"></i>
+                      <span>Trade Decisions</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="deviation-chart" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'deviation-chart' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-graph-up me-2 text-warning"></i>
+                      <span>Deviation Chart</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="assets" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'assets' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-coin me-2 text-secondary"></i>
+                      <span>Assets</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="logs" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'logs' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-terminal me-2 text-danger"></i>
+                      <span>Logs</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                </Nav>
+              </div>
+            </Col>
+            <Col lg={9} md={8} sm={12}>
                 <Tab.Content>
                   <Tab.Pane eventKey="state">
                     {state ? (
-                      <div className="coin-details">
-                        <div className="coin-detail-item">
-                          <strong>Current Coin</strong>
-                          <div className="coin-detail-value">
-                            {state.currentCoin || 'Not holding any coin'}
-                            {state.currentCoin && (
-                              <>
-                                {loadingValue ? (
-                                  <span className="ms-2">
-                                    <small><Spinner animation="border" size="sm" /> Loading value...</small>
-                                  </span>
-                                ) : coinUsdValue ? (
-                                  <span className="ms-2">
-                                    <Badge bg="info">
-                                      {coinUsdValue.amount.toFixed(8)} {state.currentCoin} ≈ {coinUsdValue.usdValue.toFixed(2)} {bot.preferredStablecoin || 'USDT'}
-                                    </Badge>
-                                  </span>
-                                ) : null}
-                              </>
-                            )}
+                      <>
+                        <h5 className="mb-3 text-primary d-flex align-items-center flex-wrap">
+                          <i className="bi bi-info-circle me-2"></i>
+                          <span className="d-inline-block">Bot Information</span>
+                        </h5>
+                        <div className="row g-3">
+                          {/* Current Coin Card */}
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #4e73df',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-coin fs-3 me-2 text-primary"></i>
+                                  <h6 className="text-primary fw-bold mb-0">Current Coin</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  {state.currentCoin ? (
+                                    <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                      {state.currentCoin}
+                                    </h4>
+                                  ) : (
+                                    <span className="text-muted fst-italic">Not holding any coin</span>
+                                  )}
+                                  {state.currentCoin && (
+                                    <div className="mt-2">
+                                      {loadingValue ? (
+                                        <div className="d-flex align-items-center text-info">
+                                          <Spinner animation="border" size="sm" className="me-2" /> 
+                                          <span>Loading value...</span>
+                                        </div>
+                                      ) : coinUsdValue ? (
+                                        <div>
+                                          <div className="d-flex align-items-center text-success">
+                                            <i className="bi bi-currency-exchange me-1"></i>
+                                            <strong>{coinUsdValue.amount.toFixed(8)}</strong>
+                                            <span className="ms-1">{state.currentCoin}</span>
+                                          </div>
+                                          <div className="mt-1 d-flex align-items-center text-info">
+                                            <i className="bi bi-arrow-right-short me-1"></i>
+                                            <span>{coinUsdValue.usdValue.toFixed(2)} {bot.preferredStablecoin || 'USDT'}</span>
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  )}
+                                </div>
+                              </Card.Body>
+                            </Card>
                           </div>
-                        </div>
-                        <div className="coin-detail-item">
-                          <strong>Price Source</strong>
-                          <div className="coin-detail-value">
-                            {state.priceSource === 'three_commas' ? 'Three Commas' : 'CoinGecko'}
-                            {state.priceSourceStatus && (
-                              <span className={`ms-2 badge ${state.lastPriceSource === state.priceSource ? 'bg-success' : 'bg-warning'}`}>
-                                {state.lastPriceSource === state.priceSource ? 'Active' : 'Fallback Active'}
-                              </span>
-                            )}
+                          
+                          {/* Price Source Card */}
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #1cc88a',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-graph-up-arrow fs-3 me-2 text-success"></i>
+                                  <h6 className="text-success fw-bold mb-0">Price Source</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                    {state.priceSource === 'three_commas' ? 'Three Commas' : 'CoinGecko'}
+                                  </h4>
+                                  {state.priceSourceStatus && (
+                                    <div className="mt-2">
+                                      <Badge 
+                                        bg={state.lastPriceSource === state.priceSource ? 'success' : 'warning'}
+                                        className="d-inline-flex align-items-center px-2 py-1"
+                                        style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.08)', fontSize: '0.85rem' }}
+                                      >
+                                        <i className={`bi bi-${state.lastPriceSource === state.priceSource ? 'check-circle' : 'exclamation-triangle'} me-1`}></i>
+                                        <span>{state.lastPriceSource === state.priceSource ? 'Active' : 'Fallback Active'}</span>
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </div>
+                              </Card.Body>
+                            </Card>
                           </div>
-                        </div>
-                        
-                        <div className="coin-detail-item">
-                          <strong>Preferred Stablecoin</strong>
-                          <div className="coin-detail-value">
-                            {bot.preferredStablecoin || 'USDT'}
+                          
+                          {/* Preferred Stablecoin Card */}
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #36b9cc',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-cash-coin fs-3 me-2 text-info"></i>
+                                  <h6 className="text-info fw-bold mb-0">Preferred Stablecoin</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                    {bot.preferredStablecoin || 'USDT'}
+                                  </h4>
+                                </div>
+                              </Card.Body>
+                            </Card>
                           </div>
-                        </div>
-                        
-                        <div className="coin-detail-item">
-                          <strong>Commission Rate</strong>
-                          <div className="coin-detail-value">
-                            {bot.commissionRate ? `${(bot.commissionRate * 100).toFixed(2)}%` : '0.20%'}
+                          
+                          {/* Commission Rate Card */}
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #f6c23e',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-percent fs-3 me-2 text-warning"></i>
+                                  <h6 className="text-warning fw-bold mb-0">Commission Rate</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                    {bot.commissionRate ? `${(bot.commissionRate * 100).toFixed(2)}%` : '0.20%'}
+                                  </h4>
+                                </div>
+                              </Card.Body>
+                            </Card>
                           </div>
-                        </div>
-                        
-                        <div className="coin-detail-item">
-                          <strong>Total Commissions Paid</strong>
-                          <div className="coin-detail-value">
-                            {state.total_commissions_paid !== undefined ? 
-                              `${parseFloat(state.total_commissions_paid).toFixed(8)} ${bot.preferredStablecoin || 'USDT'}` : 
-                              '0.00000000'}
+                          
+                          {/* Threshold Card */}
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #e74a3b',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-sliders fs-3 me-2 text-danger"></i>
+                                  <h6 className="text-danger fw-bold mb-0">Threshold</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                    {bot.thresholdPercentage || 0}%
+                                  </h4>
+                                </div>
+                              </Card.Body>
+                            </Card>
                           </div>
-                        </div>
-                        
-                        <div className="coin-detail-item">
-                          <strong>Allocation Settings</strong>
-                          <div className="coin-detail-value">
-                            {bot.allocationPercentage ? (
-                              <span>{bot.allocationPercentage}% of available funds</span>
-                            ) : bot.manualBudgetAmount ? (
-                              <span>{bot.manualBudgetAmount} {bot.preferredStablecoin || 'USDT'} budget</span>
-                            ) : (
-                              <span>No allocation specified</span>
-                            )}
+                          
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #858796',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-clock-history fs-3 me-2 text-secondary"></i>
+                                  <h6 className="text-secondary fw-bold mb-0">Check Interval</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                    {bot.checkInterval || 0} minutes
+                                  </h4>
+                                </div>
+                              </Card.Body>
+                            </Card>
                           </div>
+                          
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #4e73df',
+                              transition: 'all 0.3s'
+                            }}>
+                                <Card.Body>
+                                  <div className="d-flex align-items-center mb-2">
+                                    <i className="bi bi-bar-chart-line fs-3 me-2 text-primary"></i>
+                                    <h6 className="text-primary fw-bold mb-0">Performance & Stats</h6>
+                                  </div>
+                                  <div className="coin-detail-value">
+                                    <div className="d-flex justify-content-between align-items-center mb-2 mt-3">
+                                      <span className="text-muted">Total Commissions:</span>
+                                      <span className="text-danger fw-bold">
+                                        {state.totalCommissionsPaid !== undefined ? 
+                                          `${parseFloat(state.totalCommissionsPaid).toFixed(4)} ${bot.preferredStablecoin || 'USDT'}` : 
+                                          '0.0000'}
+                                      </span>
+                                    </div>
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                      <span className="text-muted">Last Price Update:</span>
+                                      <span>
+                                        {state.lastPriceUpdate ? 
+                                          new Date(state.lastPriceUpdate).toLocaleTimeString() : 
+                                          'Never'}
+                                      </span>
+                                    </div>
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                      <span className="text-muted">Last Check:</span>
+                                      <span>
+                                        {state.lastCheckTime ? 
+                                          new Date(state.lastCheckTime).toLocaleTimeString() : 
+                                          'Never'}
+                                      </span>
+                                    </div>
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                      <span className="text-muted">Active Trade:</span>
+                                      {state.activeTradeId ? (
+                                        <Badge bg="info" className="d-inline-flex align-items-center px-2" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.08)', fontSize: '0.85rem' }}>
+                                          <i className="bi bi-arrow-repeat me-1"></i>
+                                          <span>Trading</span>
+                                        </Badge>
+                                      ) : (
+                                        <span>None</span>
+                                      )}
+                                    </div>
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="text-muted">Allocation:</span>
+                                      <span>
+                                        {bot.allocationPercentage ? (
+                                          <span className="text-success">{bot.allocationPercentage}% of funds</span>
+                                        ) : bot.manualBudgetAmount ? (
+                                          <span className="text-primary">{bot.manualBudgetAmount} {bot.preferredStablecoin || 'USDT'}</span>
+                                        ) : (
+                                          <span className="text-warning">Not specified</span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </Card.Body>
+                              </Card>
+                            </div>
                         </div>
-                        <div className="coin-detail-item">
-                          <strong>Last Price Update</strong>
-                          <div className="coin-detail-value">
-                            {state.lastPriceUpdate ? (
-                              <>
-                                {new Date(state.lastPriceUpdate).toLocaleString()}
-                                {state.lastPriceSource && (
-                                  <span className="ms-2 text-muted">
-                                    {/* via {state.lastPriceSource === 'three_commas' ? 'Three Commas' : 'CoinGecko'} */}
-                                  </span>
-                                )}
-                              </>
-                            ) : (
-                              'Never'
-                            )}
-                          </div>
-                        </div>
-                        <div className="coin-detail-item">
-                          <strong>Last Check</strong>
-                          <div className="coin-detail-value">
-                            {state.last_check_time ? (
-                              new Date(state.lastCheckTime).toLocaleString()
-                            ) : (
-                              'Never'
-                            )}
-                          </div>
-                        </div>
-                        <div className="coin-detail-item">
-                          <strong>Active Trade</strong>
-                          <div className="coin-detail-value">
-                            {state.activeTradeId || 'None'}
-                          </div>
-                        </div>
-                      </div>
+                      </>
                     ) : (
-                      <div className="alert alert-info">No state available</div>
+                      <div className="text-center py-5">
+                        <Spinner animation="border" variant="primary" />
+                        <p className="mt-3">Loading bot state...</p>
+                      </div>
                     )}
                   </Tab.Pane>
                   <Tab.Pane eventKey="price-history" className="chart-container">
+                    <h5 className="mb-3 text-primary">
+                      <i className="bi bi-graph-up me-2"></i>
+                      Price History
+                    </h5>
                     <PriceHistory botId={bot.id} />
                   </Tab.Pane>
-                  <Tab.Pane eventKey="trade-history" className="table-container">
+                  <Tab.Pane eventKey="trade-history">
+                    <h5 className="mb-3 text-info">
+                      <i className="bi bi-clock-history me-2"></i>
+                      Trade History
+                    </h5>
                     <TradeHistory botId={bot.id} />
                   </Tab.Pane>
-                  <Tab.Pane eventKey="trade-decisions" className="trade-decisions-tab">
+                  
+                  <Tab.Pane eventKey="trade-logs">
+                    <h5 className="mb-3 text-success">
+                      <i className="bi bi-list-check me-2"></i>
+                      Trade Decisions
+                    </h5>
                     <TradeDecisionLogs botId={bot.id} />
                   </Tab.Pane>
+                  
                   <Tab.Pane eventKey="deviation-chart" className="deviation-chart-tab">
+                    <h5 className="mb-3 text-warning">
+                      <i className="bi bi-graph-up me-2"></i>
+                      Deviation Chart
+                    </h5>
                     <RelativeDeviationChart botId={bot.id} />
                   </Tab.Pane>
                   <Tab.Pane eventKey="assets">
                     <div className="p-3">
-                      <h5>Exchange Assets</h5>
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h5 className="mb-0 text-secondary d-flex align-items-center">
+                          <i className="bi bi-coin me-2 text-secondary fs-4"></i>
+                          <span>Exchange Assets</span>
+                        </h5>
+                        {bot.enabled && (
+                          <Badge bg="success" pill className="d-flex align-items-center" 
+                            style={{ 
+                              padding: '0.5rem 0.75rem',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.08)' 
+                            }}>
+                            <i className="bi bi-bank me-1"></i>
+                            <span>Account ID: {bot.accountId}</span>
+                          </Badge>
+                        )}
+                      </div>
+                      
                       {loadingAssets ? (
-                        <div className="text-center p-4">
-                          <Spinner animation="border" variant="primary" />
-                          <p className="mt-2">Loading assets...</p>
-                        </div>
+                        <Card className="mb-4 border-0 shadow-sm">
+                          <Card.Body className="text-center p-5">
+                            <div className="d-flex justify-content-center mb-3">
+                              <Spinner animation="border" variant="primary" size="sm" className="me-2" />
+                              <Spinner animation="border" variant="info" size="sm" className="me-2" />
+                              <Spinner animation="border" variant="success" size="sm" />
+                            </div>
+                            <p className="text-muted mb-0">Loading account assets...</p>
+                          </Card.Body>
+                        </Card>
                       ) : botAssets.length > 0 ? (
-                        <div className="table-responsive">
-                          <Table striped bordered hover>
-                            <thead>
-                              <tr>
-                                <th>Coin</th>
-                                <th>Amount</th>
-                                <th>USD Value</th>
-                                <th>% of Portfolio</th>
-                                <th>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {botAssets.map(asset => {
-                                const isCurrent = state?.currentCoin === asset.symbol;
-                                const isInitial = bot.initialCoin === asset.symbol;
-                                const totalPortfolioValue = botAssets.reduce(
-                                  (sum, a) => sum + (Number(a.amountInUsd) || 0), 0
-                                );
-                                const percentage = totalPortfolioValue > 0 
-                                  ? ((Number(asset.amountInUsd) || 0) / totalPortfolioValue * 100).toFixed(2)
-                                  : '0';
-                                  
-                                return (
-                                  <tr key={asset.symbol} className={isCurrent ? 'table-primary' : ''}>
-                                    <td>
-                                      {asset.coin}
-                                      {isCurrent && <Badge bg="primary" className="ms-2">Current</Badge>}
-                                      {isInitial && <Badge bg="info" className="ms-2">Initial</Badge>}
-                                    </td>
-                                    <td>{Number(asset.amount).toFixed(8)}</td>
-                                    <td>${Number(asset.amountInUsd).toFixed(2)}</td>
-                                    <td>{percentage}%</td>
-                                    <td>
-                                      {Number(asset.amount) > 0 ? (
-                                        <Badge bg="success">Active</Badge>
-                                      ) : (
-                                        <Badge bg="secondary">None</Badge>
-                                      )}
-                                    </td>
+                        <Card className="mb-4 border-0 shadow-sm">
+                          <Card.Header className="bg-gradient" style={{
+                            background: 'linear-gradient(to right, rgba(78, 115, 223, 0.1), rgba(54, 185, 204, 0.1))',
+                            border: 'none',
+                            borderBottom: '1px solid rgba(0,0,0,0.05)'
+                          }}>
+                            <div className="d-flex justify-content-between align-items-center">
+                              <span className="fw-bold text-primary">
+                                <i className="bi bi-wallet2 me-2"></i>
+                                Portfolio Distribution
+                              </span>
+                              <Badge bg="light" text="dark" className="d-flex align-items-center" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                <i className="bi bi-arrow-repeat me-1 text-primary"></i>
+                                <span>Auto-refreshing</span>
+                              </Badge>
+                            </div>
+                          </Card.Header>
+                          <Card.Body className="p-0">
+                            <div className="table-responsive">
+                              <Table bordered hover responsive className="asset-table mb-0" style={{ minWidth: '650px' }}>
+                                <thead className="bg-light">
+                                  <tr>
+                                    <th className="text-primary">Coin</th>
+                                    <th className="text-success">Amount</th>
+                                    <th className="text-info">USD Value</th>
+                                    <th className="text-warning">% of Portfolio</th>
+                                    <th className="text-secondary">Status</th>
                                   </tr>
-                                );
-                              })}
-                            </tbody>
-                          </Table>
-                        </div>
-                      ) : (
-                        <Alert variant="info">
-                          No assets found for this bot. This could mean the bot hasn't acquired any coins yet or there was an issue retrieving the data.
-                        </Alert>
-                      )}
-                    </div>
+                                </thead>
+                                <tbody>
+                                  {botAssets.map((asset, index) => {
+                                    const isCurrent = state?.currentCoin === asset.symbol;
+                                    const isInitial = bot.initialCoin === asset.symbol;
+                                    const totalPortfolioValue = botAssets.reduce(
+                                      (sum, a) => sum + (Number(a.amountInUsd) || 0), 0
+                                    );
+                                    const percentage = totalPortfolioValue > 0 
+                                      ? ((Number(asset.amountInUsd) || 0) / totalPortfolioValue * 100).toFixed(2)
+                                      : '0';
+                                    
+                                    return (
+                                      <tr key={asset.symbol || index} style={{
+                                        backgroundColor: isCurrent ? 'rgba(78, 115, 223, 0.05)' : '',
+                                        borderLeft: isCurrent ? '3px solid #4e73df' : ''
+                                      }}>
+                                        <td>
+                                          <div className="d-flex align-items-center">
+                                            <i className="bi bi-currency-bitcoin me-2" style={{ color: '#f6c23e' }}></i>
+                                            <span style={{ fontWeight: 500 }}>{asset.coin}</span>
+                                            {isCurrent && (
+                                              <Badge bg="primary" className="ms-2" 
+                                                style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}>
+                                                <i className="bi bi-check-circle-fill me-1"></i>
+                                                Current
+                                              </Badge>
+                                            )}
+                                            {isInitial && (
+                                              <Badge bg="info" className="ms-2"
+                                                style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}>
+                                                <i className="bi bi-flag-fill me-1"></i>
+                                                Initial
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td style={{ fontWeight: 500 }}>{Number(asset.amount).toFixed(8)}</td>
+                                        <td className="text-success" style={{ fontWeight: 600 }}>
+                                          ${Number(asset.amountInUsd).toFixed(2)}
+                                        </td>
+                                        <td>
+                                          <div className="d-flex align-items-center">
+                                            <div className="progress me-2" style={{ height: '8px', width: '100%', maxWidth: '60px', minWidth: '40px' }}>
+                                              <div 
+                                                className="progress-bar" 
+                                                role="progressbar" 
+                                                style={{ 
+                                                  width: `${percentage}%`,
+                                                  background: 'linear-gradient(to right, #f6c23e, #e74a3b)'
+                                                }}
+                                                aria-valuenow={percentage} 
+                                                aria-valuemin="0" 
+                                                aria-valuemax="100"
+                                              ></div>
+                                            </div>
+                                            <span className="ms-1">{percentage}%</span>
+                                          </div>
+                                        </td>
+                                        <td>
+                                          {Number(asset.amount) > 0 ? (
+                                            <Badge bg="success" className="d-inline-flex align-items-center px-2" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.08)', fontSize: '0.85rem' }}>
+                                              <i className="bi bi-check-circle-fill me-1"></i> <span>Active</span>
+                                            </Badge>
+                                          ) : (
+                                            <Badge bg="secondary" className="d-inline-flex align-items-center px-2" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.08)', fontSize: '0.85rem' }}>
+                                              <i className="bi bi-dash-circle-fill me-1"></i> <span>None</span>
+                                            </Badge>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </Table>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                        ) : (
+                          <Alert variant="info" className="d-flex align-items-center">
+                            <i className="bi bi-info-circle-fill me-2 fs-4"></i>
+                            <div>
+                              No assets found for this bot. This could mean the bot hasn't acquired any coins yet or there was an issue retrieving the data.
+                            </div>
+                          </Alert>
+                        )}
+                      </div>
                   </Tab.Pane>
-                  <Tab.Pane eventKey="logs" className="logs-tab">
-                    {logs.length > 0 ? (
-                      <LogViewer logs={logs} />
-                    ) : (
-                      <div className="alert alert-info">No logs available</div>
-                    )}
-                  </Tab.Pane>
-                </Tab.Content>
-              </div>
-            </Col>
-          </Row>
-        </Tab.Container>
-      </Modal.Body>
-    </Modal>
-  );
-};
+              <Tab.Pane eventKey="logs" className="logs-tab">
+                <div className="p-3">
+                  <h5 className="mb-3 text-danger">
+                    <i className="bi bi-terminal me-2"></i>
+                    System Logs
+                  </h5>
+                  {logs.length > 0 ? (
+                    <LogViewer logs={logs} />
+                  ) : (
+                    <Alert variant="info" className="d-flex align-items-center">
+                      <i className="bi bi-info-circle-fill me-2 fs-4"></i>
+                      <div>
+                        No logs available for this bot yet.
+                      </div>
+                    </Alert>
+                  )}
+                </div>
+              </Tab.Pane>
+            </Tab.Content>
+          </Col>
+        </Row>
+      </Tab.Container>
+    </Modal.Body>
+  </Modal>
+);
+}
 
 export default BotDetails;
