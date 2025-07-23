@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   ScatterChart, Scatter, ZAxis, Cell
 } from 'recharts';
-import { Alert, Card, Form, Row, Col, Spinner, Tabs, Tab } from 'react-bootstrap';
+import { Alert, Card, Form, Row, Col, Spinner, Tabs, Tab, Table } from 'react-bootstrap';
 
 const COLORS = [
   '#3366CC', '#DC3912', '#FF9900', '#109618', '#990099', '#3B3EAC', '#0099C6',
@@ -213,8 +213,17 @@ const RelativeDeviationChart = ({ botId }) => {
             domain={['dataMin', 'dataMax']}
           />
           <Tooltip 
-            formatter={(value) => [formatDeviation(value), 'Deviation']}
+            formatter={(value, name) => {
+              // Parse coin pair from the name (which is the key from dataToShow)
+              const coins = name.split('_');
+              const fromCoin = coins[0];
+              const toCoin = coins[1];
+              // Return value with a specific name to avoid undefined
+              return [formatDeviation(value), `${fromCoin} → ${toCoin}`, 'Deviation'];
+            }}
             labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
+            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '4px', border: '1px solid #ddd' }}
+            itemStyle={{ padding: '4px 0' }}
           />
           <Legend />
           {pairKeys.map((key, index) => (
@@ -313,9 +322,16 @@ const RelativeDeviationChart = ({ botId }) => {
           <Tooltip 
             cursor={{ strokeDasharray: '3 3' }}
             formatter={(value, name, props) => {
-              if (name === 'Pair') return [props.payload.pair];
-              return [formatDeviation(props.payload.value), 'Deviation'];
+              if (name === 'Pair') {
+                // Extract base and target coins
+                const baseCoin = props.payload.x;
+                const targetCoin = props.payload.y;
+                return [`${baseCoin} → ${targetCoin}`, 'Coin Pair', ''];
+              }
+              return [formatDeviation(props.payload.value), 'Deviation', ''];
             }}
+            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '4px', border: '1px solid #ddd' }}
+            itemStyle={{ padding: '4px 0' }}
           />
           <Legend />
           <Scatter 
@@ -332,73 +348,184 @@ const RelativeDeviationChart = ({ botId }) => {
     );
   };
 
+  // New function to render the deviation data table
+  const renderDeviationTable = () => {
+    const { latestDeviations, coins } = deviationData;
+    
+    if (!coins || coins.length === 0 || !latestDeviations) {
+      return (
+        <Alert variant="info">No deviation data available</Alert>
+      );
+    }
+
+    // Filter coins based on selected base coin if specified
+    const filteredCoins = baseCoin 
+      ? coins.filter(coin => coin === baseCoin || latestDeviations[baseCoin][coin] !== null)
+      : coins;
+      
+    // Generate pairs to show in the table
+    const pairs = [];
+    
+    if (baseCoin) {
+      // If a base coin is selected, show all its pairs
+      filteredCoins.forEach(targetCoin => {
+        if (baseCoin !== targetCoin && latestDeviations[baseCoin][targetCoin] !== null) {
+          pairs.push({
+            baseCoin: baseCoin,
+            targetCoin: targetCoin,
+            deviation: latestDeviations[baseCoin][targetCoin]
+          });
+        }
+      });
+    } else {
+      // Otherwise show all pairs with non-null deviations
+      filteredCoins.forEach(base => {
+        filteredCoins.forEach(target => {
+          if (base !== target && latestDeviations[base][target] !== null) {
+            pairs.push({
+              baseCoin: base,
+              targetCoin: target,
+              deviation: latestDeviations[base][target]
+            });
+          }
+        });
+      });
+    }
+    
+    // Sort pairs by absolute deviation (highest first)
+    const sortedPairs = pairs.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation));
+    
+    // Only show top 20 pairs to avoid overwhelming the table
+    const topPairs = sortedPairs.slice(0, 20);
+    
+    return (
+      <div className="table-responsive">
+        <Table hover size="sm" className="deviation-table">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Direction</th>
+              <th>Deviation</th>
+              <th>Recommendation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topPairs.map((pair, index) => {
+              const isPositive = pair.deviation > 0;
+              const absDeviation = Math.abs(pair.deviation);
+              let recommendation = "";
+              let recommendationClass = "";
+              
+              if (absDeviation >= 5) {
+                recommendation = isPositive ? "Consider switching to" : "Hold";
+                recommendationClass = isPositive ? "text-success" : "text-secondary";
+              } else if (absDeviation >= 2) {
+                recommendation = isPositive ? "Watch" : "";
+                recommendationClass = isPositive ? "text-warning" : "";
+              }
+              
+              return (
+                <tr key={index}>
+                  <td>
+                    <strong>{pair.baseCoin}</strong> / {pair.targetCoin}
+                  </td>
+                  <td>
+                    {isPositive ? (
+                      <span className="text-success">↗ Outperforming</span>
+                    ) : (
+                      <span className="text-danger">↘ Underperforming</span>
+                    )}
+                  </td>
+                  <td className={isPositive ? "text-success" : "text-danger"}>
+                    {isPositive ? "+" : ""}{pair.deviation.toFixed(2)}%
+                  </td>
+                  <td className={recommendationClass}>
+                    {recommendation && (
+                      <>
+                        {recommendation} {isPositive ? pair.targetCoin : ""}
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      </div>
+    );
+  };
+
   return (
     <Card className="mb-4">
       <Card.Body>
         <h5 className="mb-3">Relative Deviation Chart</h5>
-        {baseCoin && tabDisplayType === 0 && (
-          <div className="mb-3">
-            <Alert variant="info" className="py-2">
-              <small>Showing up to 5 coin pairs to improve readability</small>
-            </Alert>
+        
+        <div className="d-flex flex-wrap justify-content-between mb-3">
+          <div>
+            <Tabs
+              activeKey={tabDisplayType}
+              onSelect={(key) => setTabDisplayType(key)}
+              className="mb-3"
+            >
+              <Tab eventKey={0} title="Time Series">
+                {/* No additional content needed here, we'll render the chart based on the selected tab */}
+              </Tab>
+              <Tab eventKey={1} title="Heatmap">
+                {/* No additional content needed here, we'll render the chart based on the selected tab */}
+              </Tab>
+            </Tabs>
           </div>
-        )}
-        
-        <div className="mb-4">
-          <Row>
-            <Col xs={12} sm={6} md={4} className="mb-3">
-              <Form.Group>
-                <Form.Label>Time Range</Form.Label>
-                <Form.Select 
-                  value={timeRange}
-                  onChange={handleTimeRangeChange}
-                  size="sm"
-                >
-                  <option value="1h">Last Hour</option>
-                  <option value="6h">Last 6 Hours</option>
-                  <option value="12h">Last 12 Hours</option>
-                  <option value="24h">Last 24 Hours</option>
-                  <option value="3d">Last 3 Days</option>
-                  <option value="7d">Last 7 Days</option>
-                  <option value="30d">Last 30 Days</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
+          
+          <div className="d-flex flex-wrap">
+            <Form.Group className="me-2 mb-2" controlId="timeRange">
+              <Form.Select 
+                value={timeRange} 
+                onChange={handleTimeRangeChange}
+                className="form-select-sm"
+              >
+                <option value="1h">Last hour</option>
+                <option value="6h">Last 6 hours</option>
+                <option value="12h">Last 12 hours</option>
+                <option value="24h">Last 24 hours</option>
+                <option value="3d">Last 3 days</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </Form.Select>
+            </Form.Group>
             
-            <Col xs={12} sm={6} md={4}>
-              <Form.Group>
-                <Form.Label>Base Coin</Form.Label>
-                <Form.Select
-                  value={baseCoin}
-                  onChange={handleBaseCoinChange}
-                  size="sm"
-                >
-                  <option value="">All Coins</option>
-                  {deviationData.coins.map(coin => (
-                    <option key={coin} value={coin}>
-                      {coin}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
+            <Form.Group className="mb-2" controlId="baseCoin">
+              <Form.Select 
+                value={baseCoin} 
+                onChange={handleBaseCoinChange}
+                className="form-select-sm"
+              >
+                <option value="">All coins</option>
+                {deviationData.coins.map(coin => (
+                  <option key={coin} value={coin}>{coin}</option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          </div>
         </div>
         
-        <div className="mb-4">
-          <Tabs 
-            activeKey={tabDisplayType} 
-            onSelect={(k) => setTabDisplayType(Number(k))}
-            variant="tabs"
-            className="mb-3"
-          >
-            <Tab eventKey={0} title="Time Series" />
-            <Tab eventKey={1} title="Heatmap" />
-          </Tabs>
+        <div style={{ height: '400px', width: '100%' }}>
+          {tabDisplayType == 0 ? renderLineChart() : renderHeatmap()}
         </div>
         
-        {tabDisplayType === 0 ? renderLineChart() : renderHeatmap()}
+        <Card.Text className="text-muted mt-3 small">
+          <i className="bi bi-info-circle me-1"></i>
+          The chart shows relative deviations between coin pairs, helping identify potential trade opportunities.
+          Positive values indicate the target coin is performing better than the base coin.
+        </Card.Text>
         
+        {/* Deviation Data Table */}
+        <h5 className="mt-4 mb-3">Deviation Data Table</h5>
+        {renderDeviationTable()}
+        <Card.Text className="text-muted mt-2 small">
+          <i className="bi bi-info-circle me-1"></i>
+          This table shows the current relative deviations between coin pairs. A positive deviation means the target coin 
+          is outperforming the base coin, suggesting a potential opportunity to switch.
+        </Card.Text>
         <div className="mt-3">
           <p className="text-muted small">
             The chart shows relative deviations between coin pairs, helping identify potential trade opportunities.

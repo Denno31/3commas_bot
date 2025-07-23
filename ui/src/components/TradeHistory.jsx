@@ -134,9 +134,9 @@ function TradeHistory({ botId }) {
                 <small className="text-muted">
                   → {trade.toAmount ? `${trade.toAmount.toLocaleString()} ${trade.toCoin}` : '-'}
                 </small>
-              </td>
+              </td> 
               <td className={trade.priceChange >= 0 ? 'text-success' : 'text-danger'}>
-                {trade.priceChange >= 0 ? '+' : ''}{trade.priceChange.toFixed(2)}%
+                {trade.priceChange >= 0 ? '+' : ''}{trade.priceChange ? trade.priceChange.toFixed(2) : '-'}%
               </td>
               <td>
                 {trade.commissionAmount ? 

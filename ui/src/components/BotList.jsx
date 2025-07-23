@@ -7,7 +7,8 @@ import {
   createBot,
   updateBot,
   deleteBot,
-  toggleBot
+  toggleBot,
+  fetchBotAssets
 } from '../api';
 
 function BotList() {
@@ -334,7 +335,23 @@ function BotList() {
                   <div className="mb-3">
                     <small className="text-primary fw-bold">Current Coin</small>
                     <h6 className="mt-1" style={{ color: '#3a3b45', fontWeight: 600 }}>
-                      {bot.currentCoin || <span className="text-muted fst-italic">None</span>}
+                      {bot.currentCoin ? (
+                        <div className="d-flex align-items-center">
+                          <span>{bot.currentCoin}</span>
+                          {bot.botAssets && bot.botAssets.some(asset => asset.coin === bot.currentCoin) && (
+                            <Badge 
+                              bg="light" 
+                              text="dark" 
+                              className="ms-2" 
+                              title={`Current value: ${bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent ? '$' + Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent).toFixed(2) : 'Unknown'}`}
+                            >
+                              {Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount).toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted fst-italic">None</span>
+                      )}
                     </h6>
                   </div>
                   
