@@ -50,7 +50,7 @@ const RelativeDeviationChart = ({ botId }) => {
         };
         
         const result = await fetchBotDeviations(botId, options);
-        console.log({result})
+       
         if (result.success) {
           // Ensure we preserve the selected base coin in case of empty data
           if (baseCoin && !result.coins.includes(baseCoin)) {

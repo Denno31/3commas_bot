@@ -40,10 +40,10 @@ function BotDetails({ bot, onClose }) {
         ]);
         setState(botState);
         setLogs(botLogs);
-        console.log({botState, botLogs})
+        
         // If bot has an account ID, fetch assets when state is updated
         if (bot.accountId) {
-          console.log('fetching assets',bot.accountId)
+          
           fetchBotAssets(bot.accountId);
         }
       } catch (error) {
@@ -103,7 +103,7 @@ function BotDetails({ bot, onClose }) {
         
         try {
           // In our backend API, the coin is identified by 'coin' property, not 'symbol'
-          console.log(coins)
+         
           const coin = coins.find(c => c && c.coin === state.currentCoin);
             
           if (coin) {
@@ -113,7 +113,7 @@ function BotDetails({ bot, onClose }) {
               // Note: BTC value may not be available in our API response
             });
           } else {
-            console.log(`Coin ${state.currentCoin} not found in available coins`);
+            
             setCoinUsdValue(null);
           }
         } catch (findError) {
@@ -133,7 +133,7 @@ function BotDetails({ bot, onClose }) {
 
   // Function to fetch bot assets
   const fetchBotAssets = async (accountId) => {
-    console.log('fetching bot assets',accountId)
+    
     if (!accountId) return;
     
     setLoadingAssets(true);
