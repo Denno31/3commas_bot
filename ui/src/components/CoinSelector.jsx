@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Spinner, Table, Badge, Alert, Button } from 'react-bootstrap';
 import axios from 'axios';
+import { API_URL } from '../config';
 
 /**
  * CoinSelector component for selecting coins from 3Commas accounts
@@ -9,13 +10,13 @@ import axios from 'axios';
  * @param {Function} props.onCoinSelect Callback when a coin is selected
  * @param {number} props.accountId Account ID to fetch coins for (if already selected)
  * @param {Array} props.selectedCoins Array of already selected coins (to exclude from options)
- * @param {string} props.apiBaseUrl Base URL for API requests
+ * @param {string} props.apiBaseUrl Optional override for API base URL
  */
 const CoinSelector = ({ 
   onCoinSelect, 
   accountId, 
   selectedCoins = [], 
-  apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000/api' 
+  apiBaseUrl = `${API_URL}/api`
 }) => {
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState(accountId || null);

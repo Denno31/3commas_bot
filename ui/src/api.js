@@ -185,6 +185,7 @@ export const fetchBotDeviations = async (botId, options = {}) => {
     headers: getAuthHeader()
   });
   
+
   if (!response.ok) {
     if (response.status === 401) {
       logout();
@@ -276,6 +277,7 @@ export const downloadDatabaseBackup = async () => {
  * @returns {Promise<Array>} - List of available coins with balances
  */
 export const fetchAvailableCoins = async (accountId) => {
+  console.log('fetching coins',accountId)
   if (!accountId) {
     throw new Error('Account ID is required');
   }
@@ -284,5 +286,17 @@ export const fetchAvailableCoins = async (accountId) => {
     headers: getAuthHeader()
   });
   
+  return handleResponse(response);
+};
+
+/**
+ * Fetch bot assets (holdings) for a bot
+ * @param {string} botId - ID of the bot to fetch assets for
+ * @returns {Promise<Object>} - Bot assets data
+ */
+export const fetchBotAssets = async (botId) => {
+  const response = await fetch(`${API_URL}/api/bots/${botId}/assets`, {
+    headers: getAuthHeader()
+  });
   return handleResponse(response);
 };
