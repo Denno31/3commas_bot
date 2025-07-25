@@ -300,3 +300,16 @@ export const fetchBotAssets = async (botId) => {
   });
   return handleResponse(response);
 };
+
+/**
+ * Fetch cached available coins from server
+ * @returns {Promise<Object>} - Available coins data grouped by base currency
+ */
+export const fetchCachedCoins = async () => {
+  const response = await fetch(`${API_URL}/api/coins/available`, {
+    headers: getAuthHeader()
+  });
+  const data = await handleResponse(response)
+  console.log(data)
+  return data;
+};

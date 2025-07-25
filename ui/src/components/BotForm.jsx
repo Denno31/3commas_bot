@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert, Tabs, Tab, Badge } from 'react-bootstrap';
 import { fetchAccounts as fetchAccountsApi } from '../api';
 import CoinSelector from './CoinSelector';
+import CoinListSelector from './CoinListSelector';
 import { API_URL } from '../config';
 
 const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
@@ -21,7 +22,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
   });
 
   const [selectedCoins, setSelectedCoins] = useState([]);
-  const [coinSelectionMode, setCoinSelectionMode] = useState('manual'); // 'manual' or '3commas'
+  const [coinSelectionMode, setCoinSelectionMode] = useState('manual'); // 'manual', '3commas', or 'cached'
 
   const [accounts, setAccounts] = useState([]);
   const [error, setError] = useState(null);
@@ -266,6 +267,18 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
                   </Alert>
                 )}
               </Tab>
+              
+              <Tab eventKey="cached" title="All Available Coins">
+                <div className="mt-2">
+                  <CoinListSelector
+                    value={formData.coins}
+                    onChange={(coinsString) => {
+                      setFormData({ ...formData, coins: coinsString });
+                      setSelectedCoins(coinsString.split(',').map(c => c.trim()).filter(c => c));
+                    }}
+                  />
+                </div>
+              </Tab>
             </Tabs>
           </Form.Group>
 
@@ -340,7 +353,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             </Form.Text>
           </Form.Group>
           
-          <Form.Group className="mb-3">
+         { false && <Form.Group className="mb-3">
             <Form.Label>Allocation Percentage (%)</Form.Label>
             <Form.Control
               type="number"
@@ -368,7 +381,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             <Form.Text className="text-muted">
               Optional: Set a percentage of available funds to allocate
             </Form.Text>
-          </Form.Group>
+          </Form.Group>}
           
           <Form.Group className="mb-3">
             <Form.Label>Manual Budget Amount</Form.Label>
