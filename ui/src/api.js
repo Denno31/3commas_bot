@@ -300,3 +300,51 @@ export const fetchBotAssets = async (botId) => {
   });
   return handleResponse(response);
 };
+
+/**
+ * Fetch executed trade decisions with explanations for a bot
+ * @param {string} botId - ID of the bot to fetch trade decisions for
+ * @param {number} limit - Maximum number of records to return
+ * @returns {Promise<Array>} - Array of trade decisions with explanations
+ */
+export const fetchTradeDecisions = async (botId, limit = 50) => {
+  const params = new URLSearchParams();
+  params.append('limit', limit);
+  
+  const response = await fetch(`${API_URL}/api/trade-decisions/${botId}/executed?${params}`, {
+    headers: getAuthHeader()
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Fetch missed trade opportunities for a bot
+ * @param {string} botId - ID of the bot to fetch missed trades for
+ * @param {number} limit - Maximum number of records to return
+ * @returns {Promise<Array>} - Array of missed trade opportunities
+ */
+export const fetchMissedTrades = async (botId, limit = 50) => {
+  const params = new URLSearchParams();
+  params.append('limit', limit);
+  
+  const response = await fetch(`${API_URL}/api/trade-decisions/${botId}/missed?${params}`, {
+    headers: getAuthHeader()
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Fetch combined trade decision history (both executed and missed) for a bot
+ * @param {string} botId - ID of the bot to fetch trade history for
+ * @param {number} limit - Maximum number of records to return
+ * @returns {Promise<Array>} - Array of trade decisions (both executed and missed)
+ */
+export const fetchTradeDecisionHistory = async (botId, limit = 100) => {
+  const params = new URLSearchParams();
+  params.append('limit', limit);
+  
+  const response = await fetch(`${API_URL}/api/trade-decisions/${botId}/history?${params}`, {
+    headers: getAuthHeader()
+  });
+  return handleResponse(response);
+};

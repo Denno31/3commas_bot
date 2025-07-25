@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Badge, Form, Row, Col, Spinner } from 'react-bootstrap';
-import { fetchBotTrades } from '../api';
+import { Table, Badge, Form, Row, Col, Spinner, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { fetchBotTrades, fetchTradeDecisions } from '../api';
 
 function TradeHistory({ botId }) {
   const [trades, setTrades] = useState([]);
@@ -9,7 +9,8 @@ function TradeHistory({ botId }) {
   const [filter, setFilter] = useState({
     status: 'all',
     sortBy: 'date',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    showDetails: true
   });
 
   useEffect(() => {
@@ -20,8 +21,15 @@ function TradeHistory({ botId }) {
 
   const loadTrades = async () => {
     try {
-      const data = await fetchBotTrades(botId, filter.status === 'all' ? null : filter.status);
-      console.log(data)
+      setLoading(true);
+      // If details are enabled, use the enhanced trade decisions endpoint
+      let data;
+      if (filter.showDetails) {
+        data = await fetchTradeDecisions(botId);
+      } else {
+        data = await fetchBotTrades(botId, filter.status === 'all' ? null : filter.status);
+      }
+      console.log('Loaded trades:', data);
       setTrades(data);
       setError(null);
     } catch (err) {
@@ -110,6 +118,19 @@ function TradeHistory({ botId }) {
         </Col>
       </Row>
 
+      <Form.Check 
+        type="switch"
+        id="details-switch"
+        label="Show Decision Details"
+        className="mb-3"
+        checked={filter.showDetails}
+        onChange={() => {
+          setFilter({ ...filter, showDetails: !filter.showDetails });
+          // Reload trades when toggling the switch
+          loadTrades();
+        }}
+      />
+
       <Table responsive hover>
         <thead>
           <tr>
@@ -119,34 +140,63 @@ function TradeHistory({ botId }) {
             <th>Amount</th>
             <th>Price Change</th>
             <th>Commission</th>
+            {filter.showDetails && <th>Decision Reason</th>}
+            {filter.showDetails && <th>Deviation</th>}
             <th>Status</th>
           </tr>
         </thead>
         <tbody>
           {filteredTrades.map(trade => (
             <tr key={trade.id}>
-              <td>{new Date(trade.executedAt).toLocaleString()}</td>
-              <td>{trade.fromCoin}</td>
-              <td>{trade.toCoin}</td>
+              <td>{new Date(trade.executedAt || trade.executed_at).toLocaleString()}</td>
+              <td>{trade.fromCoin || trade.from_coin}</td>
+              <td>{trade.toCoin || trade.to_coin}</td>
               <td>
-                {trade.fromAmount ? `${trade.fromAmount.toLocaleString()} ${trade.fromCoin}` : '-'}
+                {trade.fromAmount ? `${Number(trade.fromAmount).toLocaleString()} ${trade.fromCoin || trade.from_coin}` : '-'}
                 <br />
                 <small className="text-muted">
-                  → {trade.toAmount ? `${trade.toAmount.toLocaleString()} ${trade.toCoin}` : '-'}
+                  → {trade.toAmount ? `${Number(trade.toAmount).toLocaleString()} ${trade.toCoin || trade.to_coin}` : '-'}
                 </small>
               </td> 
               <td className={trade.priceChange >= 0 ? 'text-success' : 'text-danger'}>
-                {trade.priceChange >= 0 ? '+' : ''}{trade.priceChange ? trade.priceChange.toFixed(2) : '-'}%
+                {trade.priceChange >= 0 ? '+' : ''}{trade.priceChange ? Number(trade.priceChange).toFixed(2) : '-'}%
               </td>
               <td>
                 {trade.commissionAmount ? 
                   <>
-                    {trade.commissionAmount.toFixed(8)}
+                    {Number(trade.commissionAmount).toFixed(8)}
                     <br />
-                    <small className="text-muted">({(trade.commissionRate * 100).toFixed(2)}%)</small>
+                    <small className="text-muted">({(Number(trade.commissionRate) * 100).toFixed(2)}%)</small>
                   </>
                   : '-'}
               </td>
+              {filter.showDetails && (
+                <td>
+                  {trade.decision_reason ? (
+                    <OverlayTrigger
+                      placement="left"
+                      overlay={
+                        <Tooltip id={`reason-tooltip-${trade.id}`}>
+                          {trade.decision_reason}
+                        </Tooltip>
+                      }
+                    >
+                      <div className="text-truncate" style={{ maxWidth: '200px', cursor: 'pointer' }}>
+                        {trade.decision_reason}
+                      </div>
+                    </OverlayTrigger>
+                  ) : '-'}
+                </td>
+              )}
+              {filter.showDetails && (
+                <td className="text-center">
+                  {trade.deviation_percentage ? (
+                    <Badge bg="info" text="dark">
+                      {Number(trade.deviation_percentage).toFixed(2)}%
+                    </Badge>
+                  ) : '-'}
+                </td>
+              )}
               <td>{getStatusBadge(trade.status)}</td>
             </tr>
           ))}

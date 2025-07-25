@@ -4,6 +4,7 @@ import { fetchBotState, fetchBotLogs, fetchAvailableCoins } from '../api';
 import PriceHistory from './PriceHistory';
 import TradeHistory from './TradeHistory';
 import TradeDecisionLogs from './TradeDecisionLogs';
+import TradeDecisions from './TradeDecisions';
 import RelativeDeviationChart from './RelativeDeviationChart';
 import './BotDetails.css';
 
@@ -265,6 +266,18 @@ function BotDetails({ bot, onClose }) {
                       }}>
                       <i className="bi bi-coin me-2 text-secondary"></i>
                       <span>Assets</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="trade-decisions" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'trade-decisions' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-lightbulb me-2 text-info"></i>
+                      <span>Trade Transparency</span>
+                      <Badge bg="info" text="dark" pill className="ms-2" style={{ fontSize: '0.6rem' }}>New</Badge>
                     </Nav.Link>
                   </Nav.Item>
                   <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
@@ -696,6 +709,16 @@ function BotDetails({ bot, onClose }) {
                         )}
                       </div>
                   </Tab.Pane>
+              <Tab.Pane eventKey="decision-logs" className="decision-logs-tab">
+                <div className="p-3">
+                  <TradeDecisionLogs botId={bot.id} />
+                </div>
+              </Tab.Pane>
+              <Tab.Pane eventKey="trade-decisions" className="trade-decisions-tab">
+                <div className="p-3">
+                  <TradeDecisions botId={bot.id} />
+                </div>
+              </Tab.Pane>
               <Tab.Pane eventKey="logs" className="logs-tab">
                 <div className="p-3">
                   <h5 className="mb-3 text-danger">

@@ -433,7 +433,7 @@ function BotList() {
                         </span>
                         <span style={{ color: '#5a5c69' }}>
                           <i className="bi bi-calendar-check me-1"></i>
-                          Last: {new Date(bot.trades[0].createdAt).toLocaleDateString()}
+                          Last: {new Date(bot.trades[0].executedAt).toLocaleDateString()}
                         </span>
                       </div>
                     )}
@@ -451,6 +451,7 @@ function BotList() {
                         <span className="ms-auto" style={{ color: '#5a5c69', fontSize: '0.85rem' }}>
                           <i className="bi bi-clock me-1"></i>
                           {new Date(bot.lastTrade.createdAt).toLocaleDateString()}
+                          
                         </span>
                       </div>
                       {bot.lastTrade.amount && (
