@@ -143,7 +143,8 @@ const CoinSelector = ({
                 <i className="bi bi-wallet"></i> Available Coins ({sortedCoins.length})
               </h5>
               
-              <Table hover size="sm" responsive>
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <Table hover size="sm" responsive>
                 <thead>
                   <tr>
                     <th>Coin</th>
@@ -186,6 +187,7 @@ const CoinSelector = ({
                   ))}
                 </tbody>
               </Table>
+              </div>
             </div>
           ) : selectedAccount && (
             <Alert variant="info">
