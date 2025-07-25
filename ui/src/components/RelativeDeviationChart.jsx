@@ -267,10 +267,8 @@ const RelativeDeviationChart = ({ botId }) => {
             tickFormatter={(timestamp) => {
               const date = new Date(timestamp);
               // Different format based on time range
-              if (timeRange === '1h' || timeRange === '6h') {
+              if (timeRange === '1h' || timeRange === '6h' || timeRange === '12h' || timeRange === '24h') {
                 return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-              } else if (timeRange === '12h' || timeRange === '24h') {
-                return `${date.getHours()}:00`;
               } else {
                 return `${date.getMonth()+1}/${date.getDate()}`;
               }
