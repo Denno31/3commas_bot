@@ -5,6 +5,7 @@ import PriceHistory from './PriceHistory';
 import TradeHistory from './TradeHistory';
 import TradeDecisionLogs from './TradeDecisionLogs';
 import RelativeDeviationChart from './RelativeDeviationChart';
+import DeviationCalculator from './DeviationCalculator';
 import './BotDetails.css';
 
 
@@ -276,6 +277,17 @@ function BotDetails({ bot, onClose }) {
                       }}>
                       <i className="bi bi-terminal me-2 text-danger"></i>
                       <span>Logs</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="deviation-calculator" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'deviation-calculator' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-calculator me-2 text-primary"></i>
+                      <span>Deviation Calculator</span>
                     </Nav.Link>
                   </Nav.Item>
                 </Nav>
@@ -712,6 +724,15 @@ function BotDetails({ bot, onClose }) {
                       </div>
                     </Alert>
                   )}
+                </div>
+              </Tab.Pane>
+              <Tab.Pane eventKey="deviation-calculator" className="deviation-calculator-tab">
+                <div className="p-3">
+                  <h5 className="mb-3 text-primary">
+                    <i className="bi bi-calculator me-2"></i>
+                    Deviation Calculator
+                  </h5>
+                  <DeviationCalculator botId={bot.id} />
                 </div>
               </Tab.Pane>
             </Tab.Content>
