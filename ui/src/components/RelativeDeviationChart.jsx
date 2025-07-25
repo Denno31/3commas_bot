@@ -126,6 +126,73 @@ const RelativeDeviationChart = ({ botId }) => {
     return `${value.toFixed(2)}%`;
   };
 
+  // Helper function to sample data intelligently based on time range
+  const sampleTimeSeriesData = (data, timeRange) => {
+    // If there aren't many points, don't sample
+    if (data.length <= 100) return data;
+    
+    // Sample rates based on time range
+    const getSampleRate = () => {
+      switch(timeRange) {
+        case '1h': return 1; // Keep all points for 1 hour
+        case '6h': return 2; // Sample every 2nd point
+        case '12h': return 3; // Sample every 3rd point
+        case '24h': return 5; // Sample every 5th point
+        case '3d': return 12; // Sample every 12th point
+        case '7d': return 24; // Sample every 24th point
+        case '30d': return 60; // Sample every 60th point
+        default: return 1;
+      }
+    };
+    
+    const sampleRate = getSampleRate();
+    
+    // Always keep first and last point
+    // Sort to ensure chronological order
+    const sortedData = [...data].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    
+    if (sampleRate === 1) return sortedData;
+    
+    const firstPoint = sortedData[0];
+    const lastPoint = sortedData[sortedData.length - 1];
+    
+    // Find min and max deviation points to preserve important data
+    let maxDeviation = -Infinity;
+    let minDeviation = Infinity;
+    let maxPoint = null;
+    let minPoint = null;
+    
+    sortedData.forEach(point => {
+      if (point.deviationPercent > maxDeviation) {
+        maxDeviation = point.deviationPercent;
+        maxPoint = point;
+      }
+      if (point.deviationPercent < minDeviation) {
+        minDeviation = point.deviationPercent;
+        minPoint = point;
+      }
+    });
+    
+    // Sample the data
+    const sampledData = [];
+    sortedData.forEach((point, index) => {
+      // Keep points that are important or match the sample rate
+      const isImportantPoint = 
+        point === firstPoint || 
+        point === lastPoint || 
+        point === maxPoint || 
+        point === minPoint;
+        
+      if (isImportantPoint || index % sampleRate === 0) {
+        sampledData.push(point);
+      }
+    });
+    
+    return sampledData;
+  };
+
   const renderLineChart = () => {
     const { timeSeriesData, coins } = deviationData;
     
@@ -138,8 +205,11 @@ const RelativeDeviationChart = ({ botId }) => {
     
     // Take at most 5 pairs to avoid chart clutter
     const limitedKeys = keysToShow.slice(0, 5);
+    
+    // Apply sampling to each key's data
     limitedKeys.forEach(key => {
-      dataToShow[key] = timeSeriesData[key];
+      const sampledData = sampleTimeSeriesData(timeSeriesData[key], timeRange);
+      dataToShow[key] = sampledData;
     });
     
     // No data to display for the selected coin
@@ -234,9 +304,9 @@ const RelativeDeviationChart = ({ botId }) => {
               name={key.replace('_', ' → ')}
               stroke={COLORS[index % COLORS.length]}
               strokeWidth={2}
-              dot={{ r: 3 }}
+              dot={{ r: 1.5 }}
               connectNulls={true}
-              activeDot={{ r: 6, strokeWidth: 1, stroke: '#fff' }}
+              activeDot={{ r: 4, strokeWidth: 1, stroke: '#fff' }}
             />
           ))}
         </LineChart>
@@ -350,13 +420,33 @@ const RelativeDeviationChart = ({ botId }) => {
 
   // New function to render the deviation data table
   const renderDeviationTable = () => {
-    const { latestDeviations, coins } = deviationData;
+    const { latestDeviations, timeSeriesData, coins, lastUpdated } = deviationData;
     
     if (!coins || coins.length === 0 || !latestDeviations) {
       return (
         <Alert variant="info">No deviation data available</Alert>
       );
     }
+    
+    // Create a map of latest price data from timeSeriesData
+    const latestPriceData = {};
+    
+    // Extract the latest price data for each pair from timeSeriesData
+    Object.entries(timeSeriesData).forEach(([pairKey, dataPoints]) => {
+      if (dataPoints.length > 0) {
+        // Get the most recent data point
+        const latest = dataPoints[dataPoints.length - 1];
+        const { baseCoin, targetCoin, basePrice, targetPrice } = latest;
+        
+        // Initialize baseCoin entry if needed
+        if (!latestPriceData[baseCoin]) {
+          latestPriceData[baseCoin] = {};
+        }
+        
+        // Store price data
+        latestPriceData[baseCoin][targetCoin] = { basePrice, targetPrice };
+      }
+    });
 
     // Filter coins based on selected base coin if specified
     const filteredCoins = baseCoin 
@@ -370,11 +460,20 @@ const RelativeDeviationChart = ({ botId }) => {
       // If a base coin is selected, show all its pairs
       filteredCoins.forEach(targetCoin => {
         if (baseCoin !== targetCoin && latestDeviations[baseCoin][targetCoin] !== null) {
-          pairs.push({
+          const pairData = {
             baseCoin: baseCoin,
             targetCoin: targetCoin,
-            deviation: latestDeviations[baseCoin][targetCoin]
-          });
+            deviation: latestDeviations[baseCoin][targetCoin],
+            timestamp: lastUpdated || new Date() // Use lastUpdated from API or current time as fallback
+          };
+          
+          // Add price data if available
+          if (latestPriceData[baseCoin] && latestPriceData[baseCoin][targetCoin]) {
+            pairData.basePrice = latestPriceData[baseCoin][targetCoin].basePrice;
+            pairData.targetPrice = latestPriceData[baseCoin][targetCoin].targetPrice;
+          }
+          
+          pairs.push(pairData);
         }
       });
     } else {
@@ -382,11 +481,20 @@ const RelativeDeviationChart = ({ botId }) => {
       filteredCoins.forEach(base => {
         filteredCoins.forEach(target => {
           if (base !== target && latestDeviations[base][target] !== null) {
-            pairs.push({
+            const pairData = {
               baseCoin: base,
               targetCoin: target,
-              deviation: latestDeviations[base][target]
-            });
+              deviation: latestDeviations[base][target],
+              timestamp: lastUpdated || new Date() // Use lastUpdated from API or current time as fallback
+            };
+            
+            // Add price data if available
+            if (latestPriceData[base] && latestPriceData[base][target]) {
+              pairData.basePrice = latestPriceData[base][target].basePrice;
+              pairData.targetPrice = latestPriceData[base][target].targetPrice;
+            }
+            
+            pairs.push(pairData);
           }
         });
       });
@@ -398,6 +506,32 @@ const RelativeDeviationChart = ({ botId }) => {
     // Only show top 20 pairs to avoid overwhelming the table
     const topPairs = sortedPairs.slice(0, 20);
     
+    // Format the datetime
+    const formatDateTime = (timestamp) => {
+      if (!timestamp) return 'N/A';
+      
+      const date = new Date(timestamp);
+      return date.toLocaleString(undefined, { 
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    };
+    
+    // Format price for display
+    const formatPrice = (price) => {
+      if (price === undefined || price === null) return 'N/A';
+      
+      // Format based on magnitude
+      if (price < 0.01) return price.toFixed(6);
+      if (price < 1) return price.toFixed(4);
+      if (price < 1000) return price.toFixed(2);
+      return price.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
+    
     return (
       <div className="table-responsive">
         <Table hover size="sm" className="deviation-table">
@@ -406,23 +540,14 @@ const RelativeDeviationChart = ({ botId }) => {
               <th>Pair</th>
               <th>Direction</th>
               <th>Deviation</th>
-              <th>Recommendation</th>
+              <th>Base Price</th>
+              <th>Target Price</th>
+              <th>Date/Time</th>
             </tr>
           </thead>
           <tbody>
             {topPairs.map((pair, index) => {
               const isPositive = pair.deviation > 0;
-              const absDeviation = Math.abs(pair.deviation);
-              let recommendation = "";
-              let recommendationClass = "";
-              
-              if (absDeviation >= 5) {
-                recommendation = isPositive ? "Consider switching to" : "Hold";
-                recommendationClass = isPositive ? "text-success" : "text-secondary";
-              } else if (absDeviation >= 2) {
-                recommendation = isPositive ? "Watch" : "";
-                recommendationClass = isPositive ? "text-warning" : "";
-              }
               
               return (
                 <tr key={index}>
@@ -439,12 +564,14 @@ const RelativeDeviationChart = ({ botId }) => {
                   <td className={isPositive ? "text-success" : "text-danger"}>
                     {isPositive ? "+" : ""}{pair.deviation.toFixed(2)}%
                   </td>
-                  <td className={recommendationClass}>
-                    {recommendation && (
-                      <>
-                        {recommendation} {isPositive ? pair.targetCoin : ""}
-                      </>
-                    )}
+                  <td className="text-monospace small">
+                    {formatPrice(pair.basePrice)}
+                  </td>
+                  <td className="text-monospace small">
+                    {formatPrice(pair.targetPrice)}
+                  </td>
+                  <td className="text-muted small">
+                    {formatDateTime(pair.timestamp)}
                   </td>
                 </tr>
               );

@@ -433,7 +433,7 @@ function BotList() {
                         </span>
                         <span style={{ color: '#5a5c69' }}>
                           <i className="bi bi-calendar-check me-1"></i>
-                          Last: {new Date(bot.trades[0].createdAt).toLocaleDateString()}
+                          Last: {new Date(bot.trades[0].executedAt).toLocaleDateString()}
                         </span>
                       </div>
                     )}
