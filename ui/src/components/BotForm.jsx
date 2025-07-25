@@ -353,7 +353,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             </Form.Text>
           </Form.Group>
           
-         { false && <Form.Group className="mb-3">
+         { true && <Form.Group className="mb-3">
             <Form.Label>Allocation Percentage (%)</Form.Label>
             <Form.Control
               type="number"

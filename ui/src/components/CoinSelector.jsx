@@ -40,7 +40,11 @@ const CoinSelector = ({
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${apiBaseUrl}/coins/accounts`);
+      const response = await axios.get(`${apiBaseUrl}/coins/accounts`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
       if (response.data && response.data.success) {
         setAccounts(response.data.data || []);
@@ -69,10 +73,14 @@ const CoinSelector = ({
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${apiBaseUrl}/coins/accounts/${accId}`);
-      
-      if (response.data && response.data.success) {
-        setCoins(response.data.data || []);
+      const response = await axios.get(`${apiBaseUrl}/coins/accounts/${accId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data) {
+        setCoins(response.data || []);
       } else {
         throw new Error(response.data?.message || 'Failed to fetch coins');
       }
