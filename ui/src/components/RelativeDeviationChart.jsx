@@ -21,6 +21,12 @@ const RelativeDeviationChart = ({ botId }) => {
   // 0 = time series, 1 = heatmap
   const [baseCoin, setBaseCoin] = useState('');
   const [timeRange, setTimeRange] = useState('24h');
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30); // seconds
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [tabDisplayType, setTabDisplayType] = useState(0);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [autoRefreshIntervalId, setAutoRefreshIntervalId] = useState(null);
 
   // Time range options in milliseconds
   const timeRanges = {
@@ -58,6 +64,7 @@ const RelativeDeviationChart = ({ botId }) => {
             result.coins = [...result.coins, baseCoin];
           }
           setDeviationData(result);
+          setLastRefreshed(new Date());
         } else {
           setError('Failed to load deviation data');
         }
@@ -69,8 +76,24 @@ const RelativeDeviationChart = ({ botId }) => {
       }
     };
     
+    // Initial load
     loadDeviations();
-  }, [botId, timeRange, baseCoin]);
+    
+    // Set up auto-refresh
+    let refreshTimer = null;
+    if (autoRefresh && refreshInterval > 0) {
+      refreshTimer = setInterval(loadDeviations, refreshInterval * 1000);
+      console.log(`Auto-refresh enabled: refreshing every ${refreshInterval} seconds`);
+    }
+    
+    // Cleanup function
+    return () => {
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+        console.log('Auto-refresh timer cleared');
+      }
+    };
+  }, [botId, timeRange, baseCoin, autoRefresh, refreshInterval]);
 
   // Updated to work with React Bootstrap Tabs
   const setDisplayType = (tabValue) => {
@@ -78,7 +101,7 @@ const RelativeDeviationChart = ({ botId }) => {
   };
   
   // Renamed to avoid naming conflict with the function
-  const [tabDisplayType, setTabDisplayType] = useState(0);
+  
 
   const handleTimeRangeChange = (event) => {
     setTimeRange(event.target.value);
@@ -86,6 +109,14 @@ const RelativeDeviationChart = ({ botId }) => {
 
   const handleBaseCoinChange = (event) => {
     setBaseCoin(event.target.value);
+  };
+
+  const handleAutoRefreshChange = (event) => {
+    setAutoRefresh(event.target.checked);
+  };
+
+  const handleRefreshIntervalChange = (event) => {
+    setRefreshInterval(event.target.value);
   };
 
   if (loading) {
@@ -601,7 +632,7 @@ const RelativeDeviationChart = ({ botId }) => {
             </Tabs>
           </div>
           
-          <div className="d-flex flex-wrap">
+          <div className="d-flex flex-wrap align-items-center">
             <Form.Group className="me-2 mb-2" controlId="timeRange">
               <Form.Select 
                 value={timeRange} 
@@ -618,7 +649,7 @@ const RelativeDeviationChart = ({ botId }) => {
               </Form.Select>
             </Form.Group>
             
-            <Form.Group className="mb-2" controlId="baseCoin">
+            <Form.Group className="me-2 mb-2" controlId="baseCoin">
               <Form.Select 
                 value={baseCoin} 
                 onChange={handleBaseCoinChange}
@@ -630,6 +661,39 @@ const RelativeDeviationChart = ({ botId }) => {
                 ))}
               </Form.Select>
             </Form.Group>
+            
+            <Form.Group className="me-2 mb-2 d-flex align-items-center" controlId="autoRefresh">
+              <Form.Check 
+                type="switch" 
+                id="auto-refresh-switch"
+                label={<span className="ms-1 small">Auto</span>}
+                checked={autoRefresh} 
+                onChange={handleAutoRefreshChange}
+              />
+            </Form.Group>
+            
+            <Form.Group className="me-2 mb-2" controlId="refreshInterval">
+              <Form.Select 
+                value={refreshInterval} 
+                onChange={handleRefreshIntervalChange}
+                className="form-select-sm"
+                disabled={!autoRefresh}
+              >
+                <option value="10">10s</option>
+                <option value="30">30s</option>
+                <option value="60">1m</option>
+                <option value="300">5m</option>
+              </Form.Select>
+            </Form.Group>
+            
+            {lastRefreshed && (
+              <div className="mb-2 d-flex align-items-center">
+                <span className="badge bg-light text-dark small">
+                  <i className="bi bi-arrow-clockwise me-1"></i>
+                  {lastRefreshed.toLocaleTimeString()}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         
