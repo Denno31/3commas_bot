@@ -6,6 +6,7 @@ import TradeHistory from './TradeHistory';
 import TradeDecisionLogs from './TradeDecisionLogs';
 import RelativeDeviationChart from './RelativeDeviationChart';
 import DeviationCalculator from './DeviationCalculator';
+import PriceComparisonChart from './PriceComparisonChart';
 import './BotDetails.css';
 
 
@@ -288,6 +289,17 @@ function BotDetails({ bot, onClose }) {
                       }}>
                       <i className="bi bi-calculator me-2 text-primary"></i>
                       <span>Deviation Calculator</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="price-comparison" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'price-comparison' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-graph-up-arrow me-2 text-success"></i>
+                      <span>Price Movement</span>
                     </Nav.Link>
                   </Nav.Item>
                 </Nav>
@@ -733,6 +745,15 @@ function BotDetails({ bot, onClose }) {
                     Deviation Calculator
                   </h5>
                   <DeviationCalculator botId={bot.id} />
+                </div>
+              </Tab.Pane>
+              <Tab.Pane eventKey="price-comparison" className="price-comparison-tab">
+                <div className="p-3">
+                  <h5 className="mb-3 text-primary">
+                    <i className="bi bi-graph-up-arrow me-2"></i>
+                    Price Movement Since Initial Snapshot
+                  </h5>
+                  <PriceComparisonChart botId={bot.id} />
                 </div>
               </Tab.Pane>
             </Tab.Content>

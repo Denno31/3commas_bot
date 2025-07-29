@@ -313,3 +313,38 @@ export const fetchCachedCoins = async () => {
   console.log(data)
   return data;
 };
+
+/**
+ * Fetch price comparison between initial snapshot and current prices
+ * @param {string} botId - ID of the bot
+ * @returns {Promise<Object>} - Price comparison data with initial and current prices
+ */
+export const fetchPriceComparison = async (botId) => {
+  const response = await fetch(`${API_URL}/api/snapshots/bots/${botId}/price-comparison`, {
+    headers: getAuthHeader()
+  });
+  return handleResponse(response);
+};
+
+/**
+ * Fetch historical price data with snapshot reference points
+ * @param {string} botId - ID of the bot
+ * @param {Object} options - Optional parameters
+ * @param {Date} options.fromTime - Start date for data range
+ * @param {Date} options.toTime - End date for data range
+ * @param {string} options.coin - Filter by coin
+ * @returns {Promise<Object>} - Historical price data with snapshot reference
+ */
+export const fetchHistoricalComparison = async (botId, options = {}) => {
+  const params = new URLSearchParams();
+  if (options.fromTime) params.append('from_time', options.fromTime.toISOString());
+  if (options.toTime) params.append('to_time', options.toTime.toISOString());
+  if (options.coin) params.append('coin', options.coin);
+  
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  
+  const response = await fetch(`${API_URL}/api/snapshots/bots/${botId}/historical-comparison${queryString}`, {
+    headers: getAuthHeader()
+  });
+  return handleResponse(response);
+};
