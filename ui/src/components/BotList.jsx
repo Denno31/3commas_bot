@@ -11,6 +11,35 @@ import {
   fetchBotAssets
 } from '../api';
 
+// Helper function to calculate estimated USDT value when missing
+const calculateEstimatedValue = (bot) => {
+  // Default to "N/A" if we can't calculate
+  if (!bot.botAssets || !bot.currentCoin) return "N/A";
+  
+  const currentCoinAsset = bot.botAssets.find(asset => asset.coin === bot.currentCoin);
+  if (!currentCoinAsset || !currentCoinAsset.amount) return "N/A";
+  
+  // Look for a stablecoin asset with USDT equivalent to estimate price
+  const stablecoinAsset = bot.botAssets.find(asset => 
+    (asset.coin === "USDT" || asset.coin === "USDC" || asset.coin === "BUSD") && 
+    asset.usdtEquivalent
+  );
+  
+  if (stablecoinAsset && stablecoinAsset.amount > 0 && stablecoinAsset.usdtEquivalent) {
+    // Calculate price based on stablecoin's USDT equivalent
+    const stablecoinPrice = stablecoinAsset.usdtEquivalent / stablecoinAsset.amount;
+    // Assume 1:1 for stablecoins as fallback
+    return (currentCoinAsset.amount * (stablecoinPrice || 1)).toFixed(2);
+  }
+  
+  // If we have entry price, use that as an estimate
+  if (currentCoinAsset.entryPrice) {
+    return (currentCoinAsset.amount * currentCoinAsset.entryPrice).toFixed(2);
+  }
+  
+  return "N/A";
+};
+
 function BotList() {
   const [bots, setBots] = useState([]);
   const [selectedBot, setSelectedBot] = useState(null);
@@ -24,18 +53,48 @@ function BotList() {
     totalTrades: 0,
     successRate: 0
   });
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     loadBots();
-  }, []);
+    
+    // Set up auto-refresh
+    let refreshTimer = null;
+    if (autoRefresh) {
+      refreshTimer = setInterval(() => {
+        loadBots();
+      }, 60000); // Refresh every minute
+    }
+    
+    return () => {
+      if (refreshTimer) clearInterval(refreshTimer);
+    };
+  }, [autoRefresh]);
 
   const loadBots = async () => {
     setIsLoading(true);
     try {
       const data = await fetchBots();
-      console.log(data);
+      console.log('Raw bot data:', data);
+      
+      // Debug bot assets and USDT equivalent values
+      console.log('Bot assets debug:', data.map(bot => ({
+        id: bot.id,
+        name: bot.name,
+        currentCoin: bot.currentCoin,
+        hasAssets: !!bot.botAssets,
+        assetCount: bot.botAssets ? bot.botAssets.length : 0,
+        currentCoinInAssets: bot.botAssets && bot.currentCoin ? 
+          bot.botAssets.some(asset => asset.coin === bot.currentCoin) : false,
+        usdtEquivalent: bot.botAssets && bot.currentCoin && 
+          bot.botAssets.some(asset => asset.coin === bot.currentCoin) ? 
+          bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent : 'N/A'
+      })));
+      
       setBots(data);
       setError(null);
+      setLastRefreshed(new Date());
       
       // Calculate quick stats
       const activeBots = data.filter(bot => bot.enabled).length;
@@ -171,14 +230,34 @@ function BotList() {
           </Button>
         </Col>
         <Col md={3} className="d-flex justify-content-end">
-          <Button 
-            variant="outline-secondary" 
-            onClick={loadBots} 
-            disabled={isLoading}
-          >
-            <i className="bi bi-arrow-clockwise me-2"></i>
-            {isLoading ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <div className="d-flex align-items-center">
+            {lastRefreshed && (
+              <small className="text-muted me-2">
+                Last updated: {lastRefreshed.toLocaleTimeString()}
+              </small>
+            )}
+            <div className="form-check form-switch me-2">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="autoRefreshSwitch"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              <label className="form-check-label" htmlFor="autoRefreshSwitch">
+                <small>Auto</small>
+              </label>
+            </div>
+            <Button 
+              variant="outline-secondary" 
+              onClick={loadBots} 
+              disabled={isLoading}
+              size="sm"
+            >
+              <i className="bi bi-arrow-clockwise me-1"></i>
+              {isLoading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
         </Col>
       </Row>
 
@@ -336,17 +415,37 @@ function BotList() {
                     <small className="text-primary fw-bold">Current Coin</small>
                     <h6 className="mt-1" style={{ color: '#3a3b45', fontWeight: 600 }}>
                       {bot.currentCoin ? (
-                        <div className="d-flex align-items-center">
-                          <span>{bot.currentCoin}</span>
+                        <div className="d-flex align-items-center justify-content-between w-100">
+                          <div className="d-flex align-items-center">
+                            <span className="me-2">{bot.currentCoin}</span>
+                            {bot.botAssets && bot.botAssets.some(asset => asset.coin === bot.currentCoin) && (
+                              <Badge 
+                                bg="light" 
+                                text="dark" 
+                                title={`Amount: ${Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount).toLocaleString(undefined, { maximumFractionDigits: 8 })}`}
+                              >
+                                {Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount).toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                              </Badge>
+                            )}
+                          </div>
                           {bot.botAssets && bot.botAssets.some(asset => asset.coin === bot.currentCoin) && (
-                            <Badge 
-                              bg="light" 
-                              text="dark" 
-                              className="ms-2" 
-                              title={`Current value: ${bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent ? '$' + Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent).toFixed(2) : 'Unknown'}`}
+                            <div 
+                              className="px-2 py-1 rounded" 
+                              style={{
+                                background: 'linear-gradient(135deg, #0d6efd, #0dcaf0)',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                border: '1px solid rgba(255,255,255,0.2)'
+                              }}
+                              title="USDT Equivalent Value"
                             >
-                              {Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount).toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                            </Badge>
+                              {bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent ? 
+                                `$${Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent).toFixed(2)}` : 
+                                `$${calculateEstimatedValue(bot)}`
+                              }
+                            </div>
                           )}
                         </div>
                       ) : (

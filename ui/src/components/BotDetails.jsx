@@ -6,8 +6,9 @@ import TradeHistory from './TradeHistory';
 import TradeDecisionLogs from './TradeDecisionLogs';
 import RelativeDeviationChart from './RelativeDeviationChart';
 import DeviationCalculator from './DeviationCalculator';
+import PriceComparisonChart from './PriceComparisonChart';
+import SellToStablecoinModal from './SellToStablecoinModal';
 import './BotDetails.css';
-
 
 const LogViewer = ({ logs }) => (
   <div className="logs-container">
@@ -30,6 +31,7 @@ function BotDetails({ bot, onClose }) {
   const [loadingValue, setLoadingValue] = useState(false);
   const [botAssets, setBotAssets] = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
+  const [showSellModal, setShowSellModal] = useState(false);
 
   useEffect(() => {
     const updateState = async () => {
@@ -290,6 +292,17 @@ function BotDetails({ bot, onClose }) {
                       <span>Deviation Calculator</span>
                     </Nav.Link>
                   </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="price-comparison" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'price-comparison' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-graph-up-arrow me-2 text-success"></i>
+                      <span>Price Movement</span>
+                    </Nav.Link>
+                  </Nav.Item>
                 </Nav>
               </div>
             </Col>
@@ -339,6 +352,20 @@ function BotDetails({ bot, onClose }) {
                                           <div className="mt-1 d-flex align-items-center text-info">
                                             <i className="bi bi-arrow-right-short me-1"></i>
                                             <span>{coinUsdValue.usdValue.toFixed(2)} {bot.preferredStablecoin || 'USDT'}</span>
+                                          </div>
+                                          
+                                          {/* Sell to Stablecoin Button */}
+                                          <div className="mt-3">
+                                            <Button 
+                                              variant="outline-primary" 
+                                              size="sm"
+                                              className="d-flex align-items-center"
+                                              onClick={() => setShowSellModal(true)}
+                                              disabled={!state.currentCoin || state.currentCoin === bot.preferredStablecoin}
+                                            >
+                                              <i className="bi bi-currency-exchange me-1"></i>
+                                              Sell to Stablecoin
+                                            </Button>
                                           </div>
                                         </div>
                                       ) : null}
@@ -735,11 +762,50 @@ function BotDetails({ bot, onClose }) {
                   <DeviationCalculator botId={bot.id} />
                 </div>
               </Tab.Pane>
+              <Tab.Pane eventKey="price-comparison" className="price-comparison-tab">
+                <div className="p-3">
+                  <h5 className="mb-3 text-primary">
+                    <i className="bi bi-graph-up-arrow me-2"></i>
+                    Price Movement Since Initial Snapshot
+                  </h5>
+                  <PriceComparisonChart botId={bot.id} />
+                </div>
+              </Tab.Pane>
             </Tab.Content>
           </Col>
         </Row>
       </Tab.Container>
     </Modal.Body>
+    <Modal.Footer>
+      <Button variant="secondary" onClick={onClose}>
+        Close
+      </Button>
+    </Modal.Footer>
+    {/* Sell to Stablecoin Modal */}
+    <SellToStablecoinModal
+      show={showSellModal}
+      onHide={() => setShowSellModal(false)}
+      bot={bot}
+      currentCoin={state?.currentCoin}
+      coinAmount={coinUsdValue?.amount}
+      onSuccess={() => {
+        // Refresh bot state after successful sell
+        const updateState = async () => {
+          try {
+            const botState = await fetchBotState(bot.id);
+            setState(botState);
+            
+            // If bot has an account ID, fetch assets when state is updated
+            if (bot.accountId) {
+              fetchBotAssets(bot.accountId);
+            }
+          } catch (error) {
+            console.error('Error fetching bot data:', error);
+          }
+        };
+        updateState();
+      }}
+    />
   </Modal>
 );
 }
