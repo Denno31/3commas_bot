@@ -348,3 +348,28 @@ export const fetchHistoricalComparison = async (botId, options = {}) => {
   });
   return handleResponse(response);
 };
+
+/**
+ * Sell coin units to a stablecoin (USDC/USDT)
+ * @param {string} botId - ID of the bot
+ * @param {string} fromCoin - Coin to sell
+ * @param {string|number} amount - Amount to sell (use 'max' for all available)
+ * @param {string} targetStablecoin - Target stablecoin (USDC/USDT)
+ * @returns {Promise<Object>} - Trade result
+ */
+export const sellToStablecoin = async (botId, fromCoin, amount, targetStablecoin) => {
+  const response = await fetch(`${API_URL}/api/trades/sell-to-stablecoin`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader()
+    },
+    body: JSON.stringify({
+      botId,
+      fromCoin,
+      amount,
+      targetStablecoin
+    })
+  });
+  return handleResponse(response);
+};
