@@ -59,7 +59,49 @@ const BotDetails = ({ botId }) => {
       await updateBot(botId, updatedBot);
       
       // Refresh bot data
-      await fetchBotData();
+      try {
+        setLoading(true);
+        
+        // Get the specific bot by ID
+        const botsData = await fetchBots();
+        const botData = botsData.find(b => b.id === botId) || {};
+        
+        // Fetch additional bot data
+        const botState = await fetchBotState(botId);
+        const botAssets = await fetchBotAssets(botId).catch(err => {
+          console.warn('Failed to fetch bot assets:', err);
+          return [];
+        });
+        const botTrades = await fetchBotTrades(botId).catch(err => {
+          console.warn('Failed to fetch bot trades:', err);
+          return [];
+        });
+        const botLogs = await fetchBotLogs(botId).catch(err => {
+          console.warn('Failed to fetch bot logs:', err);
+          return [];
+        });
+        
+        console.log('Updated bot data:', botData);
+        console.log('Bot state:', botState);
+        
+        // Update the bot with the combined data
+        setBot({
+          ...botData,
+          state: botState,
+          assets: botAssets || [],
+          trades: botTrades || [],
+          logs: botLogs || [],
+          // Ensure these fields are preserved
+          threshold_percentage: botData.threshold_percentage,
+          check_interval: botData.check_interval,
+          success_rate: botData.success_rate
+        });
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching bot data:', error);
+        setLoading(false);
+      }
       
       setActionLoading(false);
     } catch (error) {

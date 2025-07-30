@@ -4,7 +4,7 @@ import TopBar from './TopBar';
 import './DashboardLayout.css';
 import { logout, fetchBots } from '../../api';
 
-const DashboardLayout = ({ children, activePage, onNavigate }) => {
+const DashboardLayout = ({ children, activePage, onNavigate, refreshTrigger = 0 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [username, setUsername] = useState('');
   const [botList, setBotList] = useState([]);
@@ -15,10 +15,12 @@ const DashboardLayout = ({ children, activePage, onNavigate }) => {
     if (storedUsername) {
       setUsername(storedUsername);
     }
-    
-    // Fetch bots for sidebar navigation
-    loadBots();
   }, []);
+  
+  // Fetch bots for sidebar navigation when refreshTrigger changes
+  useEffect(() => {
+    loadBots();
+  }, [refreshTrigger]);
   
   const loadBots = async () => {
     try {
