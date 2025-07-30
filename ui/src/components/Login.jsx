@@ -22,6 +22,8 @@ const Login = ({ onLogin }) => {
     try {
       if (isLogin) {
         await login(formData.username, formData.password);
+        // Store username in localStorage
+        localStorage.setItem('username', formData.username);
       } else {
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
@@ -29,6 +31,8 @@ const Login = ({ onLogin }) => {
         await register(formData.email, formData.username, formData.password);
         // After registration, automatically log in
         await login(formData.username, formData.password);
+        // Store username in localStorage
+        localStorage.setItem('username', formData.username);
       }
       onLogin();
     } catch (err) {
