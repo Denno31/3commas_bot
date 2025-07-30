@@ -1,0 +1,141 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background-color: #1a1a1a;
+  color: #f8f9fa;
+  height: 100vh;
+  transition: all 0.3s ease;
+  width: 250px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #2c2c2c;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #f8f9fa;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.logo i {
+  margin-right: 10px;
+  font-size: 1.5rem;
+  color: #3498db;
+}
+
+.toggle-btn {
+  color: #f8f9fa;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.toggle-btn:hover, .toggle-btn:focus {
+  color: #3498db;
+  background: none;
+  box-shadow: none;
+}
+
+.sidebar-nav {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-top: 1rem;
+}
+
+.sidebar-nav .nav-link {
+  color: #a0a0a0;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.sidebar-nav .nav-link i {
+  font-size: 1.2rem;
+  min-width: 25px;
+  margin-right: 10px;
+}
+
+.sidebar-nav .nav-link:hover {
+  color: #f8f9fa;
+  background-color: #2c2c2c;
+}
+
+.sidebar-nav .nav-link.active {
+  color: #f8f9fa;
+  background-color: #2c2c2c;
+  border-left: 4px solid #3498db;
+}
+
+.sidebar-footer {
+  padding: 1rem;
+  border-top: 1px solid #2c2c2c;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.nav-item-with-children .nav-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.child-items {
+  background-color: #222222;
+  overflow: hidden;
+}
+
+.child-items .nav-link {
+  padding-left: 2.5rem;
+  font-size: 0.9rem;
+}
+
+.child-items .nav-link i {
+  font-size: 0.8rem;
+}
+
+/* Animation for expanding/collapsing */
+.nav-item-with-children .child-items {
+  max-height: 0;
+  transition: max-height 0.3s ease;
+}
+
+.nav-item-with-children.expanded .child-items {
+  max-height: 500px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+  }
+  
+  .sidebar.expanded {
+    width: 250px;
+  }
+  
+  .sidebar:not(.expanded) .logo span,
+  .sidebar:not(.expanded) .nav-link span,
+  .sidebar:not(.expanded) .sidebar-footer {
+    display: none;
+  }
+}

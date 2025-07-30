@@ -1,0 +1,184 @@
+.bots-list-page {
+  padding: 10px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+/* Table styling */
+.bots-table {
+  color: #f8f9fa;
+}
+
+.bots-table thead th {
+  background-color: #1a1a1a;
+  color: #a0a0a0;
+  font-weight: 500;
+  border-bottom: 2px solid #2c2c2c;
+  padding: 12px 16px;
+}
+
+.bots-table tbody td {
+  padding: 16px;
+  border-top: 1px solid #2c2c2c;
+  vertical-align: middle;
+}
+
+.bot-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.bot-row:hover {
+  background-color: rgba(52, 152, 219, 0.05);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  color: #3498db;
+}
+
+/* Bot icon */
+.bot-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: rgba(52, 152, 219, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bot-icon i {
+  font-size: 1.2rem;
+  color: #3498db;
+}
+
+/* Status badges */
+.status-badge {
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status-badge::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.status-badge.status-active {
+  background-color: rgba(46, 204, 113, 0.1);
+  color: #2ecc71;
+}
+
+.status-badge.status-active::before {
+  background-color: #2ecc71;
+}
+
+.status-badge.status-inactive {
+  background-color: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+}
+
+.status-badge.status-inactive::before {
+  background-color: #e74c3c;
+}
+
+.status-badge.status-paused {
+  background-color: rgba(243, 156, 18, 0.1);
+  color: #f39c12;
+}
+
+.status-badge.status-paused::before {
+  background-color: #f39c12;
+}
+
+/* Form controls */
+.form-control, .form-select {
+  background-color: #2c2c2c;
+  border: 1px solid #3c3c3c;
+  color: #f8f9fa;
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: #2c2c2c;
+  border-color: #3498db;
+  color: #f8f9fa;
+  box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+}
+
+.input-group-text {
+  background-color: #1a1a1a;
+  border: 1px solid #3c3c3c;
+  color: #a0a0a0;
+}
+
+/* Button styling */
+.btn-primary {
+  background-color: #3498db;
+  border-color: #3498db;
+}
+
+.btn-outline-primary {
+  color: #3498db;
+  border-color: #3498db;
+}
+
+.btn-outline-primary:hover {
+  background-color: #3498db;
+  color: #fff;
+}
+
+.btn-outline-danger {
+  color: #e74c3c;
+  border-color: #e74c3c;
+}
+
+.btn-outline-danger:hover {
+  background-color: #e74c3c;
+  color: #fff;
+}
+
+.btn-outline-success {
+  color: #2ecc71;
+  border-color: #2ecc71;
+}
+
+.btn-outline-success:hover {
+  background-color: #2ecc71;
+  color: #fff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .bots-table thead th,
+  .bots-table tbody td {
+    padding: 10px;
+  }
+  
+  .bot-icon {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .bot-icon i {
+    font-size: 1rem;
+  }
+}

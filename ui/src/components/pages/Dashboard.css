@@ -1,0 +1,149 @@
+.dashboard-page {
+  padding: 10px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+/* Stats cards */
+.stats-cards .card {
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background-color: #222222;
+  border: 1px solid #2c2c2c;
+}
+
+.stats-cards .card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.stat-card .card-body {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: rgba(52, 152, 219, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+}
+
+.stat-icon i {
+  font-size: 1.5rem;
+  color: #3498db;
+}
+
+.stat-details {
+  flex: 1;
+}
+
+.stat-title {
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+  font-weight: normal;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: #ffffff; /* Ensure high contrast for visibility */
+}
+
+.text-success {
+  color: #2ecc71 !important;
+}
+
+.text-danger {
+  color: #e74c3c !important;
+}
+
+.chart-placeholder {
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-list {
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: flex;
+  padding: 15px;
+  border-bottom: 1px solid #2c2c2c;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(52, 152, 219, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+}
+
+.activity-icon i {
+  font-size: 1rem;
+  color: #3498db;
+}
+
+.activity-details {
+  flex: 1;
+}
+
+.activity-text {
+  margin-bottom: 3px;
+}
+
+.activity-time {
+  font-size: 0.8rem;
+  color: #a0a0a0;
+}
+
+.card-actions {
+  width: 150px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-cards .col-sm-6 {
+    margin-bottom: 15px;
+  }
+  
+  .stat-value {
+    font-size: 1.3rem;
+  }
+}
