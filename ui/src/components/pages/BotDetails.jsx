@@ -574,25 +574,13 @@ const BotDetails = ({ botId }) => {
         }}
       />
       
-      {/* Edit Bot Modal */}
-      <Modal
+      {/* Edit Bot Form */}
+      <BotForm
         show={showEditModal}
         onHide={() => setShowEditModal(false)}
-        size="lg"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Bot</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <BotForm
-            show={showEditModal}
-            onHide={() => setShowEditModal(false)}
-            onSubmit={handleBotUpdate}
-            editBot={bot}
-          />
-        </Modal.Body>
-      </Modal>
+        onSubmit={handleBotUpdate}
+        editBot={bot}
+      />
     </div>
   );
 };
