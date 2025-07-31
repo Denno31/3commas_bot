@@ -385,11 +385,19 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
                       {bot.currentCoin ? (
                         <div className="d-flex align-items-center justify-content-between w-100">
                           <div className="d-flex align-items-center">
-                            <span className="me-2">{bot.currentCoin}</span>
+                            <span className="me-2" style={{ fontSize: '1.1rem', fontWeight: 700 }}>{bot.currentCoin}</span>
                             {bot.botAssets && bot.botAssets.some(asset => asset.coin === bot.currentCoin) && (
                               <Badge 
                                 bg="light" 
                                 text="dark" 
+                                className="units-badge"
+                                style={{ 
+                                  padding: '0.35em 0.65em', 
+                                  fontSize: '0.9rem',
+                                  fontWeight: 600,
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                  border: '1px solid rgba(0,0,0,0.05)'
+                                }}
                                 title={`Amount: ${Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount).toLocaleString(undefined, { maximumFractionDigits: 8 })}`}
                               >
                                 {Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount).toLocaleString(undefined, { maximumFractionDigits: 8 })}
@@ -400,12 +408,13 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
                             <div 
                               className="px-2 py-1 rounded" 
                               style={{
-                                background: 'linear-gradient(135deg, #0d6efd, #0dcaf0)',
+                                background: 'linear-gradient(135deg, #1cc88a, #36b9cc)',
                                 color: 'white',
                                 fontWeight: 'bold',
-                                fontSize: '0.85rem',
+                                fontSize: '0.9rem',
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                                border: '1px solid rgba(255,255,255,0.2)'
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                marginLeft: '8px'
                               }}
                               title="USDT Equivalent Value"
                             >
@@ -424,14 +433,20 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
                   
                   <div className="mb-3">
                     <small className="text-success fw-bold">Trading Coins</small>
-                    <div className="d-flex flex-wrap gap-1 mt-1">
+                    <div className="d-flex flex-wrap gap-1 mt-2" style={{ maxHeight: '80px', overflowY: 'auto' }}>
                       {bot.coins && bot.coins.map(coin => (
                         <Badge 
                           key={coin} 
                           bg={coin === bot.currentCoin ? 'primary' : 'light'} 
                           text={coin === bot.currentCoin ? 'white' : 'dark'} 
                           className="me-1 mb-1" 
-                          style={{ fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                          style={{ 
+                            fontWeight: 600, 
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                            padding: '0.4em 0.6em',
+                            border: coin === bot.currentCoin ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.05)',
+                            fontSize: '0.85rem'
+                          }}
                         >
                           {coin}
                         </Badge>
