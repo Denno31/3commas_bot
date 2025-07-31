@@ -85,6 +85,16 @@
   border-left: 4px solid #3498db;
 }
 
+.text-success {
+  color: #1cc88a !important;
+}
+
+.selected-indicator {
+  font-size: 0.8rem;
+  margin-left: auto;
+  color: #3498db;
+}
+
 .sidebar-footer {
   padding: 1rem;
   border-top: 1px solid #2c2c2c;

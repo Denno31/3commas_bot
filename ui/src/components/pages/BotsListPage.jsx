@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Badge, Form, InputGroup, Placeholder } from 'react-bootstrap';
 import './BotsListPage.css';
-import { fetchBots as apiFetchBots, fetchBotAssets } from '../../api';
+import { fetchBots as apiFetchBots, fetchBotAssets, toggleBot } from '../../api';
 
 // Helper function to calculate estimated USDT value when missing
 const calculateEstimatedValue = (bot) => {
@@ -40,6 +40,7 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
   const [sortDirection, setSortDirection] = useState('asc');
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   
   useEffect(() => {
     fetchBotsData();
@@ -82,6 +83,18 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
       console.error('Error fetching bots:', error);
       setBots([]);
       setLoading(false);
+    }
+  };
+  
+  const handleToggleBot = async (botId) => {
+    try {
+      setActionLoading(true);
+      await toggleBot(botId);
+      await fetchBotsData(); // Refresh the bots list to show updated status
+      setActionLoading(false);
+    } catch (error) {
+      console.error('Error toggling bot:', error);
+      setActionLoading(false);
     }
   };
   
@@ -179,6 +192,8 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
                   placeholder="Search bots by name, exchange, or coin..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  className="placeholder-dark"
+                  style={{ "--placeholder-opacity": "0.7" }}
                 />
                 {searchTerm && (
                   <Button 
@@ -408,9 +423,26 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
                   </div>
                   
                   <div className="mb-3">
-                    <small className="text-success fw-bold">Exchange</small>
+                    <small className="text-success fw-bold">Trading Coins</small>
+                    <div className="d-flex flex-wrap gap-1 mt-1">
+                      {bot.coins && bot.coins.map(coin => (
+                        <Badge 
+                          key={coin} 
+                          bg={coin === bot.currentCoin ? 'primary' : 'light'} 
+                          text={coin === bot.currentCoin ? 'white' : 'dark'} 
+                          className="me-1 mb-1" 
+                          style={{ fontWeight: 600, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                        >
+                          {coin}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <small className="text-info fw-bold">Exchange</small>
                     <h6 className="mt-1" style={{ color: '#3a3b45', fontWeight: 600 }}>
-                      <i className="bi bi-currency-exchange me-1" style={{ color: '#1cc88a' }}></i>
+                      <i className="bi bi-currency-exchange me-1" style={{ color: '#36b9cc' }}></i>
                       {bot.exchange || 'Unknown'}
                     </h6>
                   </div>
@@ -460,11 +492,21 @@ const BotsListPage = ({ onViewBot, onNewBot }) => {
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Toggle bot status
+                      handleToggleBot(bot.id);
                     }}
+                    disabled={actionLoading}
                   >
-                    <i className={`bi bi-${bot.enabled || bot.status === 'active' ? 'stop-fill' : 'play-fill'} me-1`}></i>
-                    {bot.enabled || bot.status === 'active' ? 'Stop' : 'Start'}
+                    {actionLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <i className={`bi bi-${bot.enabled || bot.status === 'active' ? 'stop-fill' : 'play-fill'} me-1`}></i>
+                        {bot.enabled || bot.status === 'active' ? 'Stop' : 'Start'}
+                      </>
+                    )}
                   </Button>
                 </Card.Footer>
               </Card>

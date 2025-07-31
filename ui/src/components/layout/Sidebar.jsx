@@ -79,8 +79,11 @@ const Sidebar = ({ activeItem, onNavigate, collapsed, onToggle, botList = [] }) 
                   className={activeItem === `bot-${bot.id}` ? 'active' : ''} 
                   onClick={() => handleNavigation('bot-details', bot.id)}
                 >
-                  <i className="bi bi-circle"></i>
+                  <i className={`bi ${bot.enabled ? 'bi-circle-fill text-success' : 'bi-circle'}`}></i>
                   <span>{bot.name}</span>
+                  {activeItem === `bot-${bot.id}` && (
+                    <i className="bi bi-chevron-right ms-auto selected-indicator"></i>
+                  )}
                 </Nav.Link>
               ))}
               

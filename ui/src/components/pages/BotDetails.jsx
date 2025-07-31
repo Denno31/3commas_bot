@@ -64,42 +64,51 @@ const BotDetails = ({ botId }) => {
         
         // Get the specific bot by ID
         const botsData = await fetchBots();
-        const botData = botsData.find(b => b.id === botId) || {};
+        const botData = botsData.find(b => b.id === botId);
         
-        // Fetch additional bot data
-        const botState = await fetchBotState(botId);
-        const botAssets = await fetchBotAssets(botId).catch(err => {
-          console.warn('Failed to fetch bot assets:', err);
-          return [];
-        });
-        const botTrades = await fetchBotTrades(botId).catch(err => {
-          console.warn('Failed to fetch bot trades:', err);
-          return [];
-        });
-        const botLogs = await fetchBotLogs(botId).catch(err => {
-          console.warn('Failed to fetch bot logs:', err);
-          return [];
-        });
+        if (!botData) {
+          throw new Error(`Bot with ID ${botId} not found after update`);
+        }
         
-        console.log('Updated bot data:', botData);
-        console.log('Bot state:', botState);
+        // Fetch additional bot details
+        const [botState, botAssets, botTradesData, botLogsData] = await Promise.all([
+          fetchBotState(botId),
+          fetchBotAssets(botId).catch(err => {
+            console.warn('Failed to fetch bot assets:', err);
+            return [];
+          }),
+          fetchBotTrades(botId).catch(err => {
+            console.warn('Failed to fetch bot trades:', err);
+            return [];
+          }),
+          fetchBotLogs(botId).catch(err => {
+            console.warn('Failed to fetch bot logs:', err);
+            return [];
+          })
+        ]);
         
-        // Update the bot with the combined data
-        setBot({
+        // Merge all data into a single bot object
+        const enrichedBot = {
           ...botData,
           state: botState,
           assets: botAssets || [],
-          trades: botTrades || [],
-          logs: botLogs || [],
-          // Ensure these fields are preserved
-          threshold_percentage: botData.threshold_percentage,
-          check_interval: botData.check_interval,
-          success_rate: botData.success_rate
-        });
+          trades: botTradesData || [],
+          logs: botLogsData || [],
+          totalTrades: botTradesData?.length || 0,
+          lastTrade: botTradesData?.length > 0 ? botTradesData[0].timestamp : null,
+          // Ensure these fields are preserved with proper naming
+          thresholdPercentage: botData.thresholdPercentage || botData.threshold_percentage,
+          checkInterval: botData.checkInterval || botData.check_interval,
+          successRate: botData.successRate || botData.success_rate,
+          accountId: botData.accountId || botData.account_id,
+          exchange: botData.exchange
+        };
         
+        console.log('Updated bot data:', enrichedBot);
+        setBot(enrichedBot);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching bot data:', error);
+        console.error('Error fetching bot data after update:', error);
         setLoading(false);
       }
       
