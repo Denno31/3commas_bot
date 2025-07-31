@@ -32,6 +32,7 @@ function BotDetails({ bot, onClose }) {
   const [botAssets, setBotAssets] = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
+  const [exchange,setExchange]= useState(null)
 
   useEffect(() => {
     const updateState = async () => {
@@ -95,7 +96,7 @@ function BotDetails({ bot, onClose }) {
         }
         
         // In our backend, the coins are in the 'data' property, not 'coins'
-        const coins = response;
+        const coins = response.availableCoins;
         
         // Make sure the coins array exists
         if (!coins || !Array.isArray(coins)) {
@@ -141,9 +142,10 @@ function BotDetails({ bot, onClose }) {
     
     setLoadingAssets(true);
     try {
-      const coins = await fetchAvailableCoins(accountId);
+      const {availableCoins,account} = await fetchAvailableCoins(accountId);
+      console.log({availableCoins, account});
       // Filter for coins with balances or coins related to the bot
-      const relevantAssets = coins.filter(coin => {
+      const relevantAssets = availableCoins.filter(coin => {
         const hasBalance = Number(coin.amount) > 0;
         const isBotCoin = coin.symbol === state?.currentCoin || 
                          coin.symbol === bot.initialCoin || 
@@ -155,7 +157,7 @@ function BotDetails({ bot, onClose }) {
       const sortedAssets = relevantAssets.sort((a, b) => {
         return (Number(b.amountInUsd) || 0) - (Number(a.amountInUsd) || 0);
       });
-      
+      setExchange(account)
       setBotAssets(sortedAssets);
     } catch (error) {
       console.error('Error fetching bot assets:', error);
@@ -602,7 +604,7 @@ function BotDetails({ bot, onClose }) {
                               boxShadow: '0 2px 4px rgba(0,0,0,0.08)' 
                             }}>
                             <i className="bi bi-bank me-1"></i>
-                            <span>Account ID: {bot.accountId}</span>
+                            <span>Account: {exchange?.exchange_name} {bot.accountId}</span>
                           </Badge>
                         )}
                       </div>
