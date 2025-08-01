@@ -23,6 +23,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
 
   const [selectedCoins, setSelectedCoins] = useState([]);
   const [coinSelectionMode, setCoinSelectionMode] = useState('manual'); // 'manual', '3commas', or 'cached'
+  const [availableCoins, setAvailableCoins] = useState([]);
 
   const [accounts, setAccounts] = useState([]);
   const [error, setError] = useState(null);
@@ -52,9 +53,15 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
         
         // Initialize selected coins array
         setSelectedCoins(coinsList);
+        
+        // Fetch available coins for the selected account
+        if (editBot.accountId) {
+          fetchAvailableCoinsForAccount(editBot.accountId);
+        }
       } else {
         // Reset coin selection for new bot
         setSelectedCoins([]);
+        setAvailableCoins([]);
       }
     }
   }, [show, editBot]);
@@ -68,6 +75,32 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
       console.error('Error fetching accounts:', error);
       setError('Failed to load trading accounts');
       setAccounts([]);
+    }
+  };
+  
+  // Function to fetch available coins when account is selected
+  const fetchAvailableCoinsForAccount = async (accountId) => {
+    try {
+      if (!accountId) return;
+      
+      console.log('Fetching coins for account:', accountId);
+      // Use the correct API endpoint for coins
+      const response = await fetch(`${API_URL}/api/coins/accounts/${accountId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch coins');
+      }
+      
+      const data = await response.json();
+      console.log('Fetched coins:', data);
+      setAvailableCoins(data || []);
+    } catch (error) {
+      console.error('Error fetching available coins:', error);
+      setAvailableCoins([]);
     }
   };
 
@@ -176,7 +209,15 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             <Form.Label>Trading Account</Form.Label>
             <Form.Select
               value={formData.account_id}
-              onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
+              onChange={(e) => {
+                const accountId = e.target.value;
+                setFormData({ ...formData, account_id: accountId });
+                if (accountId) {
+                  fetchAvailableCoinsForAccount(accountId);
+                } else {
+                  setAvailableCoins([]);
+                }
+              }}
               required
             >
               <option value="">Select a trading account</option>
@@ -284,15 +325,66 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
 
           <Form.Group className="mb-3">
             <Form.Label>Initial Coin</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Initial coin (optional)"
-              value={formData.initial_coin}
-              onChange={(e) => setFormData({ ...formData, initial_coin: e.target.value.toUpperCase() })}
-            />
-            <Form.Text className="text-muted">
-              Must be one of the trading pairs above
-            </Form.Text>
+            {formData.account_id && availableCoins.length > 0 ? (
+              <>
+                <Form.Select
+                  value={formData.initial_coin}
+                  onChange={(e) => setFormData({ ...formData, initial_coin: e.target.value })}
+                >
+                  <option value="">Select an initial coin</option>
+                  
+                  {availableCoins
+                    .filter(coin => {
+                      // Check if coin has balance and is in selected coins list
+                      // Handle different data structures that might come from the API
+                      const coinSymbol = coin.coin || coin.currency || coin.symbol;
+                      const coinAmount = coin.amount || coin.balance || 0;
+                      const coinUsdValue = coin.amountInUsd || coin.usd_value || coin.usd || 0;
+                      
+                      console.log(`Coin ${coinSymbol}: amount=${coinAmount}, selected=${selectedCoins.includes(coinSymbol)}`);
+                      
+                      // Show all coins with balance, regardless of whether they're in the selected list
+                      return coinAmount > 0;
+                    })
+                    .sort((a, b) => {
+                      const aUsd = a.amountInUsd || a.usd_value || a.usd || 0;
+                      const bUsd = b.amountInUsd || b.usd_value || b.usd || 0;
+                      return bUsd - aUsd;
+                    })
+                    .map(coin => {
+                      const coinSymbol = coin.coin || coin.currency || coin.symbol;
+                      const coinAmount = coin.amount || coin.balance || 0;
+                      const coinUsdValue = coin.amountInUsd || coin.usd_value || coin.usd || 0;
+                      
+                      return (
+                        <option key={coinSymbol} value={coinSymbol}>
+                          {coinSymbol} - Balance: {Number(coinAmount).toFixed(8)} (${Number(coinUsdValue).toFixed(2)})
+                        </option>
+                      );
+                    })}
+                </Form.Select>
+                <Form.Text className="text-muted">
+                  Select from available coins with balance in your account
+                </Form.Text>
+                <div className="mt-2">
+                  <small className="text-info">
+                    <i className="bi bi-info-circle"></i> {availableCoins.length} coins available, {availableCoins.filter(c => (c.amount || c.balance || 0) > 0).length} with balance
+                  </small>
+                </div>
+              </>
+            ) : (
+              <>
+                <Form.Control
+                  type="text"
+                  placeholder="Initial coin (optional)"
+                  value={formData.initial_coin}
+                  onChange={(e) => setFormData({ ...formData, initial_coin: e.target.value.toUpperCase() })}
+                />
+                <Form.Text className="text-muted">
+                  {formData.account_id ? "Loading available coins..." : "Select an account to see available coins"}
+                </Form.Text>
+              </>
+            )}
           </Form.Group>
 
           <Form.Group className="mb-3">
