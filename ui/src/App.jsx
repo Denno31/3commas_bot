@@ -28,7 +28,7 @@ function App() {
       {isAuthenticated ? (
         <>
           <Navbar bg="dark" variant="dark" expand="lg" className="mb-4">
-            <Container>
+            <Container fluid className="px-4">
               <Navbar.Brand>
                 <i className="bi bi-currency-bitcoin me-2"></i>
                 Crypto Rebalancer
@@ -93,7 +93,7 @@ function App() {
             </Container>
           </Navbar>
 
-          <Container className="py-4">
+          <Container fluid className="py-4 px-4">
             {activeTab === 'bots' ? (
               <BotList />
             ) : (
