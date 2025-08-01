@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Spinner, Alert, Card, Badge, Pagination, Form, Row, Col, Button } from 'react-bootstrap';
+import { Table, Spinner, Alert, Card, Badge, Pagination, Form, Row, Col, Button, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { fetchBotSwapDecisions } from '../api';
 
 function SwapDecisionHistory({ botId }) {
@@ -19,7 +19,10 @@ function SwapDecisionHistory({ botId }) {
     toCoin: '',
     swapPerformed: '',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    deviationMin: '',
+    deviationMax: '',
+    hasProtection: ''
   });
 
   useEffect(() => {
@@ -106,6 +109,15 @@ function SwapDecisionHistory({ botId }) {
 
   const formatPercent = (value) => {
     return value !== undefined && value !== null ? `${(parseFloat(value) * 100).toFixed(2)}%` : 'N/A';
+  };
+  
+  // Helper to determine if a deviation is positive, negative, or neutral
+  const getDeviationColor = (value) => {
+    if (value === undefined || value === null) return 'inherit';
+    const numValue = parseFloat(value);
+    if (numValue > 0) return 'text-success';
+    if (numValue < 0) return 'text-danger';
+    return 'text-warning';
   };
 
   const formatPrice = (price) => {
@@ -207,62 +219,119 @@ function SwapDecisionHistory({ botId }) {
         {/* Filters */}
         <div className="mb-4">
           <h6>Filters</h6>
+          <Row className="g-2 mb-2">
+            <Col md={2}>
+              <OverlayTrigger placement="top" overlay={<Tooltip>Filter by source coin</Tooltip>}>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  placeholder="From Coin"
+                  name="fromCoin"
+                  value={filters.fromCoin}
+                  onChange={handleFilterChange}
+                />
+              </OverlayTrigger>
+            </Col>
+            <Col md={2}>
+              <OverlayTrigger placement="top" overlay={<Tooltip>Filter by target coin</Tooltip>}>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  placeholder="To Coin"
+                  name="toCoin"
+                  value={filters.toCoin}
+                  onChange={handleFilterChange}
+                />
+              </OverlayTrigger>
+            </Col>
+            <Col md={2}>
+              <OverlayTrigger placement="top" overlay={<Tooltip>Filter by swap execution status</Tooltip>}>
+                <Form.Select
+                  size="sm"
+                  name="swapPerformed"
+                  value={filters.swapPerformed}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Swaps</option>
+                  <option value="true">Performed</option>
+                  <option value="false">Not Performed</option>
+                </Form.Select>
+              </OverlayTrigger>
+            </Col>
+            <Col md={2}>
+              <OverlayTrigger placement="top" overlay={<Tooltip>Filter by protection status</Tooltip>}>
+                <Form.Select
+                  size="sm"
+                  name="hasProtection"
+                  value={filters.hasProtection}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Protection</option>
+                  <option value="true">Protection Triggered</option>
+                  <option value="false">No Protection</option>
+                </Form.Select>
+              </OverlayTrigger>
+            </Col>
+            <Col md={2}>
+              <OverlayTrigger placement="top" overlay={<Tooltip>Filter by start date</Tooltip>}>
+                <Form.Control
+                  size="sm"
+                  type="date"
+                  name="startDate"
+                  value={filters.startDate}
+                  onChange={handleFilterChange}
+                  placeholder="Start Date"
+                />
+              </OverlayTrigger>
+            </Col>
+            <Col md={2}>
+              <OverlayTrigger placement="top" overlay={<Tooltip>Filter by end date</Tooltip>}>
+                <Form.Control
+                  size="sm"
+                  type="date"
+                  name="endDate"
+                  value={filters.endDate}
+                  onChange={handleFilterChange}
+                  placeholder="End Date"
+                />
+              </OverlayTrigger>
+            </Col>
+          </Row>
           <Row className="g-2">
             <Col md={2}>
-              <Form.Control
-                size="sm"
-                type="text"
-                placeholder="From Coin"
-                name="fromCoin"
-                value={filters.fromCoin}
-                onChange={handleFilterChange}
-              />
+              <OverlayTrigger placement="top" overlay={<Tooltip>Minimum deviation percentage</Tooltip>}>
+                <Form.Control
+                  size="sm"
+                  type="number"
+                  placeholder="Min Deviation %"
+                  name="deviationMin"
+                  value={filters.deviationMin}
+                  onChange={handleFilterChange}
+                />
+              </OverlayTrigger>
             </Col>
             <Col md={2}>
-              <Form.Control
-                size="sm"
-                type="text"
-                placeholder="To Coin"
-                name="toCoin"
-                value={filters.toCoin}
-                onChange={handleFilterChange}
-              />
+              <OverlayTrigger placement="top" overlay={<Tooltip>Maximum deviation percentage</Tooltip>}>
+                <Form.Control
+                  size="sm"
+                  type="number"
+                  placeholder="Max Deviation %"
+                  name="deviationMax"
+                  value={filters.deviationMax}
+                  onChange={handleFilterChange}
+                />
+              </OverlayTrigger>
             </Col>
-            <Col md={2}>
-              <Form.Select
-                size="sm"
-                name="swapPerformed"
-                value={filters.swapPerformed}
-                onChange={handleFilterChange}
-              >
-                <option value="">All Swaps</option>
-                <option value="true">Performed</option>
-                <option value="false">Not Performed</option>
-              </Form.Select>
-            </Col>
-            <Col md={2}>
-              <Form.Control
-                size="sm"
-                type="date"
-                name="startDate"
-                value={filters.startDate}
-                onChange={handleFilterChange}
-                placeholder="Start Date"
-              />
-            </Col>
-            <Col md={2}>
-              <Form.Control
-                size="sm"
-                type="date"
-                name="endDate"
-                value={filters.endDate}
-                onChange={handleFilterChange}
-                placeholder="End Date"
-              />
-            </Col>
-            <Col md={2}>
-              <Button size="sm" variant="primary" onClick={applyFilters} className="me-2">Apply</Button>
-              <Button size="sm" variant="secondary" onClick={resetFilters}>Reset</Button>
+            <Col md={6} className="d-flex align-items-center">
+              <Button size="sm" variant="primary" onClick={applyFilters} className="me-2">
+                <i className="bi bi-filter me-1"></i> Apply
+              </Button>
+              <Button size="sm" variant="secondary" onClick={resetFilters} className="me-2">
+                <i className="bi bi-x-circle me-1"></i> Reset
+              </Button>
+              <Button size="sm" variant="info" onClick={() => loadSwapDecisions()} className="me-2">
+                <i className="bi bi-arrow-clockwise me-1"></i> Refresh
+              </Button>
             </Col>
           </Row>
         </div>
@@ -279,17 +348,55 @@ function SwapDecisionHistory({ botId }) {
           <Alert variant="info">No swap decisions found for this bot.</Alert>
         ) : (
           <>
-            <div className="table-responsive" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+            <div className="table-responsive" style={{ overflowX: 'auto', overflowY: 'auto', maxWidth: '100%', maxHeight: '600px' }}>
               <Table striped bordered hover size="sm" className="swap-decision-table">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>From → To</th>
-                    <th>Current Prices</th>
-                    <th>Deviation</th>
-                    <th>ETH Values</th>
-                    <th>Status</th>
-                    <th>Reason</th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>When the swap decision was evaluated</Tooltip>}>
+                        <span>Date</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Source and target coins for potential swap</Tooltip>}>
+                        <span>From → To</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Current prices at time of evaluation</Tooltip>}>
+                        <span>Current Prices</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Original snapshot prices used as baseline</Tooltip>}>
+                        <span>Snapshot Prices</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Price deviation percentage and threshold for swap</Tooltip>}>
+                        <span>Deviation</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Ethereum equivalent values for the trade</Tooltip>}>
+                        <span>ETH Values</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Global peak value and protection status</Tooltip>}>
+                        <span>Global Peak</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Whether the swap was performed</Tooltip>}>
+                        <span>Status</span>
+                      </OverlayTrigger>
+                    </th>
+                    <th>
+                      <OverlayTrigger placement="top" overlay={<Tooltip>Reason for the swap decision</Tooltip>}>
+                        <span>Reason</span>
+                      </OverlayTrigger>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,7 +414,13 @@ function SwapDecisionHistory({ botId }) {
                       </td>
                       <td>
                         <small>
-                          Current: {formatPercent(decision.priceDeviationPercent)}<br />
+                          {decision.fromCoin}: {formatPrice(decision.fromCoinSnapshot)}<br />
+                          {decision.toCoin}: {formatPrice(decision.toCoinSnapshot)}
+                        </small>
+                      </td>
+                      <td>
+                        <small>
+                          Current: <span className={getDeviationColor(decision.priceDeviationPercent)}>{formatPercent(decision.priceDeviationPercent)}</span><br />
                           Threshold: {formatPercent(decision.priceThreshold)}
                         </small>
                       </td>
@@ -315,6 +428,12 @@ function SwapDecisionHistory({ botId }) {
                         <small>
                           From: {decision.ethEquivalentValue !== undefined ? parseFloat(decision.ethEquivalentValue).toFixed(6) : 'N/A'}<br />
                           Min: {decision.minEthEquivalent !== undefined ? parseFloat(decision.minEthEquivalent).toFixed(6) : 'N/A'}
+                        </small>
+                      </td>
+                      <td>
+                        <small>
+                          Peak: {decision.globalPeakValue !== undefined ? parseFloat(decision.globalPeakValue).toFixed(6) : 'N/A'}<br />
+                          {decision.globalProtectionTriggered && <Badge bg="warning" className="mt-1">Protection</Badge>}
                         </small>
                       </td>
                       <td>{getSwapStatusBadge(decision)}</td>

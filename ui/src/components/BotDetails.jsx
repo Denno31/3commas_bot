@@ -169,12 +169,14 @@ function BotDetails({ bot, onClose }) {
   };
   
   return (
-    <Modal
-      show={true}
-      onHide={onClose}
-      dialogClassName="bot-details-modal responsive-modal"
-      aria-labelledby="bot-details-modal"
-      size="xl"
+    <Modal 
+      show={true} 
+      onHide={onClose} 
+      backdrop="static" 
+      keyboard={false} 
+      size="xl" 
+      centered
+      dialogClassName="bot-details-modal-wide"
     >
       <Modal.Header 
         closeButton 
