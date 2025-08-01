@@ -4,6 +4,7 @@ import { fetchBotState, fetchBotLogs, fetchAvailableCoins } from '../api';
 import PriceHistory from './PriceHistory';
 import TradeHistory from './TradeHistory';
 import TradeDecisionLogs from './TradeDecisionLogs';
+import SwapDecisionHistory from './SwapDecisionHistory';
 import RelativeDeviationChart from './RelativeDeviationChart';
 import DeviationCalculator from './DeviationCalculator';
 import PriceComparisonChart from './PriceComparisonChart';
@@ -248,6 +249,17 @@ function BotDetails({ bot, onClose }) {
                       }}>
                       <i className="bi bi-list-check me-2 text-success"></i>
                       <span>Trade Decisions</span>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
+                    <Nav.Link eventKey="swap-decisions" className="d-flex align-items-center py-2 px-3" 
+                      style={{
+                        borderRadius: '8px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: activeTab === 'swap-decisions' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none'
+                      }}>
+                      <i className="bi bi-shuffle me-2 text-info"></i>
+                      <span>Swap Decisions</span>
                     </Nav.Link>
                   </Nav.Item>
                   <Nav.Item className="mb-2 px-1" style={{ flex: '1 1 auto', minWidth: '140px', maxWidth: '200px' }}>
@@ -646,7 +658,13 @@ function BotDetails({ bot, onClose }) {
                     </h5>
                     <TradeDecisionLogs botId={bot.id} />
                   </Tab.Pane>
-                  
+                  <Tab.Pane eventKey="swap-decisions">
+                    <h5 className="mb-3 text-success">
+                      <i className="bi bi-list-check me-2"></i>
+                      Swap Decisions
+                    </h5>
+                    <SwapDecisionHistory botId={bot.id} />
+                  </Tab.Pane>
                   <Tab.Pane eventKey="deviation-chart" className="deviation-chart-tab">
                     <h5 className="mb-3 text-warning">
                       <i className="bi bi-graph-up me-2"></i>

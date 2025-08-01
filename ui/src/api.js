@@ -163,6 +163,44 @@ export const fetchTradeDecisionLogs = async (botId, limit = 100) => {
 };
 
 /**
+ * Fetch swap decisions for a bot with pagination and filtering
+ * @param {string} botId - ID of the bot to fetch swap decisions for
+ * @param {Object} options - Optional parameters
+ * @param {number} options.page - Page number for pagination
+ * @param {number} options.limit - Number of records per page
+ * @param {string} options.fromCoin - Filter by source coin
+ * @param {string} options.toCoin - Filter by target coin
+ * @param {boolean} options.swapPerformed - Filter by whether swap was performed
+ * @param {Date|string} options.startDate - Start date for filtering
+ * @param {Date|string} options.endDate - End date for filtering
+ * @returns {Promise<Object>} - Swap decisions with pagination metadata
+ */
+export const fetchBotSwapDecisions = async (botId, options = {}) => {
+  const params = new URLSearchParams();
+  if (options.page) params.append('page', options.page);
+  if (options.limit) params.append('limit', options.limit);
+  if (options.fromCoin) params.append('fromCoin', options.fromCoin);
+  if (options.toCoin) params.append('toCoin', options.toCoin);
+  if (options.swapPerformed !== undefined) params.append('swapPerformed', options.swapPerformed);
+  if (options.startDate) params.append('startDate', new Date(options.startDate).toISOString());
+  if (options.endDate) params.append('endDate', new Date(options.endDate).toISOString());
+  
+  const response = await fetch(`${API_URL}/api/bots/${botId}/swap-decisions?${params}`, {
+    headers: getAuthHeader()
+  });
+  
+  if (!response.ok) {
+    if (response.status === 401) {
+      logout();
+      throw new Error('Please login again');
+    }
+    throw new Error('Failed to fetch swap decisions');
+  }
+  
+  return response.json();
+};
+
+/**
  * Fetch relative coin deviation data for charting
  * @param {string} botId - ID of the bot to fetch deviations for
  * @param {Object} options - Optional parameters
