@@ -489,6 +489,70 @@ function BotDetails({ bot, onClose }) {
                             </Card>
                           </div>
                           
+                          {/* Exchange Account Card */}
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #20c997',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-bank fs-3 me-2 text-teal" style={{ color: '#20c997' }}></i>
+                                  <h6 className="fw-bold mb-0" style={{ color: '#20c997' }}>Exchange Account</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  {bot.accountInfo ? (
+                                    <>
+                                      <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                        {bot.accountInfo.name || 'Account'}
+                                      </h4>
+                                      <div className="mt-2 small">
+                                        <div className="d-flex align-items-center text-muted mb-1">
+                                          <i className="bi bi-building me-1"></i>
+                                          <span>Exchange: {bot.accountInfo.exchange_name || 'Unknown'}</span>
+                                        </div>
+                                        {bot.accountInfo.market_code && (
+                                          <div className="d-flex align-items-center text-muted mb-1">
+                                            <i className="bi bi-tag me-1"></i>
+                                            <span>Market: {bot.accountInfo.market_code}</span>
+                                          </div>
+                                        )}
+                                        <div className="d-flex align-items-center text-muted">
+                                          <i className="bi bi-shield-check me-1"></i>
+                                          <span>Type: {bot.accountInfo.type || 'Unknown'}</span>
+                                        </div>
+                                      </div>
+                                    </>
+                                  ) : exchange ? (
+                                    <>
+                                      <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                        {exchange.name || 'Account'}
+                                      </h4>
+                                      <div className="mt-2 small">
+                                        <div className="d-flex align-items-center text-muted mb-1">
+                                          <i className="bi bi-building me-1"></i>
+                                          <span>Exchange: {exchange.exchange_name || 'Unknown'}</span>
+                                        </div>
+                                        {exchange.market_code && (
+                                          <div className="d-flex align-items-center text-muted mb-1">
+                                            <i className="bi bi-tag me-1"></i>
+                                            <span>Market: {exchange.market_code}</span>
+                                          </div>
+                                        )}
+                                        <div className="d-flex align-items-center text-muted">
+                                          <i className="bi bi-shield-check me-1"></i>
+                                          <span>Type: {exchange.type || 'Unknown'}</span>
+                                        </div>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="text-muted fst-italic mt-2">Account information not available</div>
+                                  )}
+                                </div>
+                              </Card.Body>
+                            </Card>
+                          </div>
+                          
                           <div className="col-xl-6 col-md-12">
                             <Card className="coin-detail-card h-100" style={{ 
                               borderLeft: '4px solid #4e73df',
