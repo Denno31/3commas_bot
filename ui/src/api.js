@@ -411,3 +411,23 @@ export const sellToStablecoin = async (botId, fromCoin, amount, targetStablecoin
   });
   return handleResponse(response);
 };
+
+/**
+ * Reset a bot to its initial state
+ * @param {string} botId - ID of the bot to reset
+ * @param {Object} options - Reset options
+ * @param {string} options.resetType - Type of reset ('soft' or 'hard')
+ * @param {boolean} options.sellToStablecoin - Whether to sell to stablecoin before reset
+ * @returns {Promise<Object>} - The updated bot
+ */
+export function resetBot(botId, options = {}) {
+  return fetch(`${API_URL}/api/bots/${botId}/reset`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader()
+    },
+    body: JSON.stringify(options)
+  })
+  .then(handleResponse);
+}
