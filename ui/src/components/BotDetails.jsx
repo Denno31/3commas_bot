@@ -9,6 +9,7 @@ import RelativeDeviationChart from './RelativeDeviationChart';
 import DeviationCalculator from './DeviationCalculator';
 import PriceComparisonChart from './PriceComparisonChart';
 import SellToStablecoinModal from './SellToStablecoinModal';
+import ResetBotModal from './ResetBotModal';
 import './BotDetails.css';
 
 const LogViewer = ({ logs }) => (
@@ -33,6 +34,7 @@ function BotDetails({ bot, onClose }) {
   const [botAssets, setBotAssets] = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
   const [exchange,setExchange]= useState(null)
 
   useEffect(() => {
@@ -863,6 +865,14 @@ function BotDetails({ bot, onClose }) {
       </Tab.Container>
     </Modal.Body>
     <Modal.Footer>
+      <Button 
+        variant="outline-danger" 
+        onClick={() => setShowResetModal(true)}
+        className="me-auto"
+      >
+        <i className="bi bi-arrow-counterclockwise me-1"></i>
+        Reset Bot
+      </Button>
       <Button variant="secondary" onClick={onClose}>
         Close
       </Button>
@@ -876,6 +886,30 @@ function BotDetails({ bot, onClose }) {
       coinAmount={coinUsdValue?.amount}
       onSuccess={() => {
         // Refresh bot state after successful sell
+        const updateState = async () => {
+          try {
+            const botState = await fetchBotState(bot.id);
+            setState(botState);
+            
+            // If bot has an account ID, fetch assets when state is updated
+            if (bot.accountId) {
+              fetchBotAssets(bot.accountId);
+            }
+          } catch (error) {
+            console.error('Error fetching bot data:', error);
+          }
+        };
+        updateState();
+      }}
+    />
+    
+    {/* Reset Bot Modal */}
+    <ResetBotModal
+      show={showResetModal}
+      onHide={() => setShowResetModal(false)}
+      bot={bot}
+      onSuccess={() => {
+        // Refresh bot state after successful reset
         const updateState = async () => {
           try {
             const botState = await fetchBotState(bot.id);
