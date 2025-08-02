@@ -157,15 +157,15 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
       coins: Array.isArray(formData.coins) 
         ? formData.coins 
         : formData.coins.split(',').map(c => c.trim()),
-      thresholdPercentage: parseFloat(formData.threshold_percentage),
-      checkInterval: parseInt(formData.check_interval),
-      initialCoin: formData.initial_coin,
-      accountId: formData.account_id.toString(),
-      priceSource: formData.price_source,
-      preferredStablecoin: formData.preferred_stablecoin,
-      allocationPercentage: formData.allocation_percentage ? parseFloat(formData.allocation_percentage) : undefined,
-      manualBudgetAmount: formData.manual_budget_amount ? parseFloat(formData.manual_budget_amount) : undefined,
-      commissionRate: parseFloat(formData.commission_rate),
+      threshold_percentage: parseFloat(formData.threshold_percentage),
+      check_interval: parseInt(formData.check_interval),
+      initial_coin: formData.initial_coin,
+      account_id: formData.account_id.toString(),
+      price_source: formData.price_source,
+      preferred_stablecoin: formData.preferred_stablecoin,
+      allocation_percentage: formData.allocation_percentage ? parseFloat(formData.allocation_percentage) : undefined,
+      manual_budget_amount: formData.manual_budget_amount ? parseFloat(formData.manual_budget_amount) : undefined,
+      commission_rate: parseFloat(formData.commission_rate),
       enabled: formData.enabled
     };
 
