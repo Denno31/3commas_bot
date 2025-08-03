@@ -39,6 +39,8 @@ function PriceComparisonChart({ botId }) {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const chartRef = useRef(null);
+  // New state to toggle between chart and table views - default to table view
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'chart'
   
   // Time range options in milliseconds
   const timeRanges = {
@@ -241,8 +243,30 @@ function PriceComparisonChart({ botId }) {
       <Card className="mb-4">
         <Card.Header className="bg-light">
           <Row className="align-items-center">
-            <Col xs={12} md={6}>
+            <Col xs={12} md={4}>
               <h5 className="m-0">Price Movement Since Initial Snapshot</h5>
+            </Col>
+            <Col xs={12} md={2}>
+              <div className="d-flex justify-content-md-center mt-2 mt-md-0">
+                <div className="btn-group" role="group" aria-label="View mode">
+                  <button 
+                    type="button" 
+                    className={`btn btn-sm ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <i className="bi bi-table me-1"></i>
+                    Table
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`btn btn-sm ${viewMode === 'chart' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('chart')}
+                  >
+                    <i className="bi bi-bar-chart-line me-1"></i>
+                    Chart
+                  </button>
+                </div>
+              </div>
             </Col>
             <Col xs={12} md={6}>
               <div className="d-flex flex-wrap justify-content-md-end mt-2 mt-md-0">
@@ -304,7 +328,7 @@ function PriceComparisonChart({ botId }) {
               <Spinner animation="border" />
               <span className="ms-2">Loading price data...</span>
             </div>
-          ) : chartData ? (
+          ) : chartData && viewMode === 'chart' ? (
             <div style={{ height: '400px' }}>
               <Line
                 ref={chartRef}
@@ -398,50 +422,51 @@ function PriceComparisonChart({ botId }) {
         </Card.Body>
       </Card>
       
-      {/* Price Comparison Table */}
-      <Card>
-        <Card.Header className="bg-light">
-          <h5 className="m-0">Price Comparison Summary</h5>
-        </Card.Header>
-        <Card.Body>
-          {loading ? (
-            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100px' }}>
-              <Spinner animation="border" size="sm" />
-              <span className="ms-2">Loading price data...</span>
-            </div>
-          ) : (
-            <Table responsive hover className="mt-3">
-              <thead>
-                <tr>
-                  <th>Coin</th>
-                  <th>Initial Price</th>
-                  <th>Current Price</th>
-                  <th>Change (%)</th>
-                  <th>Snapshot Date</th>
-                  <th>Last Updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {priceComparisonData && priceComparisonData.length > 0 ? (
-                  priceComparisonData.map(coin => (
-                    <tr key={coin.coin}>
-                      <td><strong>{coin.coin}</strong></td>
-                      <td>${coin.initialPrice.toLocaleString()}</td>
-                      <td>${coin.currentPrice ? coin.currentPrice.toLocaleString() : 'N/A'}</td>
-                      <td className={coin.percentChange >= 0 ? 'text-success' : 'text-danger'}>
-                        {formatPercentage(coin.percentChange)}
-                      </td>
-                      <td>{new Date(coin.snapshotTimestamp).toLocaleDateString()}</td>
-                      <td>{coin.lastUpdated ? new Date(coin.lastUpdated).toLocaleString() : 'N/A'}</td>
-                    </tr>
-                  ))
-                ) : (
+      {/* Price Comparison Table - visible in both view modes but positioned differently */}
+      {viewMode === 'table' && (
+        <Card>
+          <Card.Header className="bg-light">
+            <h5 className="m-0">Price Comparison Summary</h5>
+          </Card.Header>
+          <Card.Body>
+            {loading ? (
+              <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100px' }}>
+                <Spinner animation="border" size="sm" />
+                <span className="ms-2">Loading price data...</span>
+              </div>
+            ) : (
+              <Table responsive hover className="mt-3">
+                <thead>
                   <tr>
-                    <td colSpan="6" className="text-center text-muted">No price comparison data available</td>
+                    <th>Coin</th>
+                    <th>Initial Price</th>
+                    <th>Current Price</th>
+                    <th>Change (%)</th>
+                    <th>Snapshot Date</th>
+                    <th>Last Updated</th>
                   </tr>
-                )}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {priceComparisonData && priceComparisonData.length > 0 ? (
+                    priceComparisonData.map(coin => (
+                      <tr key={coin.coin}>
+                        <td><strong>{coin.coin}</strong></td>
+                        <td>${coin.initialPrice.toLocaleString()}</td>
+                        <td>${coin.currentPrice ? coin.currentPrice.toLocaleString() : 'N/A'}</td>
+                        <td className={coin.percentChange >= 0 ? 'text-success' : 'text-danger'}>
+                          {formatPercentage(coin.percentChange)}
+                        </td>
+                        <td>{new Date(coin.snapshotTimestamp).toLocaleDateString()}</td>
+                        <td>{coin.lastUpdated ? new Date(coin.lastUpdated).toLocaleString() : 'N/A'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="text-center text-muted">No price comparison data available</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
           )}
           
           <Card.Text className="text-muted mt-3 small">
@@ -451,6 +476,7 @@ function PriceComparisonChart({ botId }) {
           </Card.Text>
         </Card.Body>
       </Card>
+      )}
     </div>
   );
 }

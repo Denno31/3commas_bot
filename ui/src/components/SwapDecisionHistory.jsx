@@ -108,7 +108,7 @@ function SwapDecisionHistory({ botId }) {
   };
 
   const formatPercent = (value) => {
-    return value !== undefined && value !== null ? `${(parseFloat(value) * 100).toFixed(2)}%` : 'N/A';
+    return value !== undefined && value !== null ? `${(parseFloat(value)).toFixed(2)}%` : 'N/A';
   };
   
   // Helper to determine if a deviation is positive, negative, or neutral
