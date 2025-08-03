@@ -377,11 +377,7 @@ function SwapDecisionHistory({ botId }) {
                         <span>Deviation</span>
                       </OverlayTrigger>
                     </th>
-                    <th>
-                      <OverlayTrigger placement="top" overlay={<Tooltip>Ethereum equivalent values for the trade</Tooltip>}>
-                        <span>ETH Values</span>
-                      </OverlayTrigger>
-                    </th>
+                    {/* ETH Values column removed */}
                     <th>
                       <OverlayTrigger placement="top" overlay={<Tooltip>Global peak value and protection status</Tooltip>}>
                         <span>Global Peak</span>
@@ -424,16 +420,17 @@ function SwapDecisionHistory({ botId }) {
                           Threshold: {formatPercent(decision.priceThreshold)}
                         </small>
                       </td>
+                      {/* ETH Values column removed */}
                       <td>
                         <small>
-                          From: {decision.ethEquivalentValue !== undefined ? parseFloat(decision.ethEquivalentValue).toFixed(6) : 'N/A'}<br />
-                          Min: {decision.minEthEquivalent !== undefined ? parseFloat(decision.minEthEquivalent).toFixed(6) : 'N/A'}
-                        </small>
-                      </td>
-                      <td>
-                        <small>
-                          Peak: {decision.globalPeakValue !== undefined ? parseFloat(decision.globalPeakValue).toFixed(6) : 'N/A'}<br />
-                          {decision.globalProtectionTriggered && <Badge bg="warning" className="mt-1">Protection</Badge>}
+                          Peak: {decision.globalPeakValue !== undefined ? parseFloat(decision.globalPeakValue).toFixed(2) : 'N/A'}<br />
+                          Current: {decision.currentGlobalPeakValue !== undefined ? parseFloat(decision.currentGlobalPeakValue).toFixed(2) : 'N/A'}<br />
+                          {decision.globalPeakValue > 0 && decision.currentGlobalPeakValue > 0 && (
+                            <span className={getDeviationColor((decision.currentGlobalPeakValue / decision.globalPeakValue * 100) - 100)}>
+                              {((decision.currentGlobalPeakValue / decision.globalPeakValue) * 100).toFixed(2)}%
+                            </span>
+                          )}
+                          {decision.globalProtectionTriggered && <Badge bg="warning" className="mt-1 ms-2">Protection</Badge>}
                         </small>
                       </td>
                       <td>{getSwapStatusBadge(decision)}</td>
