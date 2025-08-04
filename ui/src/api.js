@@ -255,6 +255,13 @@ export const fetchSystemConfig = async () => {
   return handleResponse(response);
 };
 
+export const fetchRealTimePrice = async (coin, baseCoin = 'USDT') => {
+  const response = await fetch(`${API_URL}/api/bots/price/${coin}?baseCoin=${baseCoin}`, {
+    headers: getAuthHeader()
+  });
+  return handleResponse(response);
+};
+
 export const updateSystemConfig = async (config) => {
   console.log('configs here',config)
   const response = await fetch(`${API_URL}/api/config/system`, {

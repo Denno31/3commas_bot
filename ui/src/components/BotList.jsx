@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Button, Table, Badge, Placeholder } from 'react-bootstrap';
 import BotForm from './BotForm';
 import BotDetails from './BotDetails';
@@ -8,8 +8,26 @@ import {
   updateBot,
   deleteBot,
   toggleBot,
-  fetchBotAssets
+  fetchBotAssets,
+  fetchRealTimePrice
 } from '../api';
+
+// Cache for real-time prices to avoid excessive API calls
+const priceCache = {
+  prices: {},  // Format: { "BTC": { price: 50000, timestamp: Date object } }
+  // Cache prices for 5 minutes (300000 ms)
+  cacheDuration: 300000,
+  isValid: function(coin) {
+    return this.prices[coin] && 
+           (new Date() - this.prices[coin].timestamp) < this.cacheDuration;
+  },
+  get: function(coin) {
+    return this.isValid(coin) ? this.prices[coin].price : null;
+  },
+  set: function(coin, price) {
+    this.prices[coin] = { price, timestamp: new Date() };
+  }
+};
 
 // Helper function to calculate estimated USDT value when missing
 const calculateEstimatedValue = (bot) => {
@@ -18,26 +36,65 @@ const calculateEstimatedValue = (bot) => {
   
   const currentCoinAsset = bot.botAssets.find(asset => asset.coin === bot.currentCoin);
   if (!currentCoinAsset || !currentCoinAsset.amount) return "N/A";
-  
-  // Look for a stablecoin asset with USDT equivalent to estimate price
-  const stablecoinAsset = bot.botAssets.find(asset => 
-    (asset.coin === "USDT" || asset.coin === "USDC" || asset.coin === "BUSD") && 
-    asset.usdtEquivalent
-  );
-  
-  if (stablecoinAsset && stablecoinAsset.amount > 0 && stablecoinAsset.usdtEquivalent) {
-    // Calculate price based on stablecoin's USDT equivalent
-    const stablecoinPrice = stablecoinAsset.usdtEquivalent / stablecoinAsset.amount;
-    // Assume 1:1 for stablecoins as fallback
-    return (currentCoinAsset.amount * (stablecoinPrice || 1)).toFixed(2);
+
+  // For stablecoins, assume 1:1 with USDT
+  if (["USDT", "USDC", "BUSD", "DAI"].includes(bot.currentCoin)) {
+    return currentCoinAsset.amount.toFixed(2);
   }
   
-  // If we have entry price, use that as an estimate
+  // If we have cached real-time price, use that
+  if (bot.realTimePrice) {
+    return (currentCoinAsset.amount * bot.realTimePrice).toFixed(2);
+  }
+
+  // Fallback to entry price if available
   if (currentCoinAsset.entryPrice) {
     return (currentCoinAsset.amount * currentCoinAsset.entryPrice).toFixed(2);
   }
   
+  // If we have usdtEquivalent directly, use that
+  if (currentCoinAsset.usdtEquivalent) {
+    return currentCoinAsset.usdtEquivalent.toFixed(2);
+  }
+  
   return "N/A";
+};
+
+// Function to fetch real-time prices for all bots
+const fetchRealTimePrices = async (bots) => {
+  if (!bots || !bots.length) return [];
+  
+  const updatedBots = [...bots];
+  
+  // For each bot, fetch its current coin's price (if not a stablecoin and not cached)
+  const botPromises = updatedBots.map(async (bot) => {
+    // Skip if no current coin or if it's a stablecoin (assume 1:1 with USDT)
+    if (!bot.currentCoin || ['USDT', 'USDC', 'BUSD', 'DAI'].includes(bot.currentCoin)) {
+      return bot;
+    }
+    
+    try {
+      // Check cache first
+      if (priceCache.isValid(bot.currentCoin)) {
+        bot.realTimePrice = priceCache.get(bot.currentCoin);
+        return bot;
+      }
+      
+      // Fetch from API if not in cache
+      const priceData = await fetchRealTimePrice(bot.currentCoin);
+      if (priceData && priceData.price) {
+        priceCache.set(bot.currentCoin, priceData.price);
+        bot.realTimePrice = priceData.price;
+      }
+      return bot;
+    } catch (error) {
+      console.error(`Error fetching price for ${bot.currentCoin}:`, error);
+      return bot;
+    }
+  });
+  
+  // Wait for all bot price fetches to complete
+  return Promise.all(botPromises);
 };
 
 function BotList() {
@@ -47,6 +104,7 @@ function BotList() {
   const [editBot, setEditBot] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [priceLoading, setPriceLoading] = useState(false);
   const [stats, setStats] = useState({
     totalBots: 0,
     activeBots: 0,
@@ -56,42 +114,14 @@ function BotList() {
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    loadBots();
-    
-    // Set up auto-refresh
-    let refreshTimer = null;
-    if (autoRefresh) {
-      refreshTimer = setInterval(() => {
-        loadBots();
-      }, 60000); // Refresh every minute
-    }
-    
-    return () => {
-      if (refreshTimer) clearInterval(refreshTimer);
-    };
-  }, [autoRefresh]);
-
-  const loadBots = async () => {
+  console.log(bots)
+  // Memoize loadBots to prevent recreation on every render
+  const loadBots = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await fetchBots();
-      console.log('Raw bot data:', data);
       
-      // Debug bot assets and USDT equivalent values
-      console.log('Bot assets debug:', data.map(bot => ({
-        id: bot.id,
-        name: bot.name,
-        currentCoin: bot.currentCoin,
-        hasAssets: !!bot.botAssets,
-        assetCount: bot.botAssets ? bot.botAssets.length : 0,
-        currentCoinInAssets: bot.botAssets && bot.currentCoin ? 
-          bot.botAssets.some(asset => asset.coin === bot.currentCoin) : false,
-        usdtEquivalent: bot.botAssets && bot.currentCoin && 
-          bot.botAssets.some(asset => asset.coin === bot.currentCoin) ? 
-          bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent : 'N/A'
-      })));
-      
+      // Set bots first without real-time prices
       setBots(data);
       setError(null);
       setLastRefreshed(new Date());
@@ -111,13 +141,43 @@ function BotList() {
         totalTrades,
         successRate: totalTrades ? Math.round((successfulTrades / totalTrades) * 100) : 0
       });
+      
+      // Then fetch real-time prices and update the bots
+      setPriceLoading(true);
+      try {
+        const botsWithPrices = await fetchRealTimePrices(data);
+        setBots(botsWithPrices);
+      } catch (priceErr) {
+        console.error('Error fetching real-time prices:', priceErr);
+        // Don't set error state here to avoid interrupting the UI flow
+      } finally {
+        setPriceLoading(false);
+      }
     } catch (err) {
       console.error('Error fetching bots:', err);
       setError('Failed to load bots. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadBots();
+    
+    // Set up auto-refresh
+    let refreshTimer = null;
+    if (autoRefresh) {
+      refreshTimer = setInterval(() => {
+        loadBots();
+      }, 60000); // Refresh every minute
+    }
+    
+    return () => {
+      if (refreshTimer) clearInterval(refreshTimer);
+    };
+  }, [autoRefresh, loadBots]);
+
+  // Note: loadBots function has been moved and converted to useCallback above
 
   const handleCreateBot = async (bot) => {
     try {
@@ -133,7 +193,6 @@ function BotList() {
 
   const handleUpdateBot = async (bot) => {
     try {
-      console.log('Updating bot:')
       const data = await updateBot(bot.id, bot);
       setBots(bots.map(b => b.id === bot.id ? data : b));
       setEditBot(null);
@@ -461,10 +520,11 @@ function BotList() {
                               }}
                               title="USDT Equivalent Value"
                             >
-                              {bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent ? 
-                                `$${Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent).toFixed(2)}` : 
-                                `$${calculateEstimatedValue(bot)}`
+                              {bot.realTimePrice && bot.botAssets.find(asset => asset.coin === bot.currentCoin) ?
+                                `$${(bot.realTimePrice * Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount)).toFixed(2)}` :
+                                'Updating...'  // Show 'Updating...' when real-time price isn't available yet
                               }
+                              
                             </div>
                           )}
                         </div>
@@ -767,18 +827,11 @@ function BotList() {
                                     className="px-2 py-1 rounded" 
                                     style={{
                                       background: 'linear-gradient(135deg, #6c757d, #adb5bd)',
-                                      color: 'white',
-                                      fontWeight: 'bold',
-                                      fontSize: '0.85rem',
-                                      boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                                      border: '1px solid rgba(255,255,255,0.2)'
+                                      color: 'white'
                                     }}
-                                    title="USDT Equivalent Value"
                                   >
-                                    {bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent ? 
-                                      `$${Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).usdtEquivalent).toFixed(2)}` : 
-                                      `$${calculateEstimatedValue(bot)}`
-                                    }
+                                    Est. USDT: {calculateEstimatedValue(bot)}
+                                    {priceLoading && <Badge bg="info" className="ms-1" style={{fontSize: '0.7rem'}}>Updating...</Badge>}
                                   </div>
                                 )}
                               </div>
