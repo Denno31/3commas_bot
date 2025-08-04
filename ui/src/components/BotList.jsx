@@ -60,6 +60,39 @@ const calculateEstimatedValue = (bot) => {
   return "N/A";
 };
 
+// Calculate real-time profit (current value - budget)
+const calculateProfit = (bot) => {
+  if (!bot.manualBudgetAmount || !bot.botAssets || !bot.currentCoin) return 0;
+  
+  const currentCoinAsset = bot.botAssets.find(asset => asset.coin === bot.currentCoin);
+  if (!currentCoinAsset || !currentCoinAsset.amount) return 0;
+  
+  let currentValue = 0;
+  
+  // For stablecoins, assume 1:1 with USDT
+  if (["USDT", "USDC", "BUSD", "DAI"].includes(bot.currentCoin)) {
+    currentValue = Number(currentCoinAsset.amount);
+  } else if (bot.realTimePrice) {
+    // Use real-time price if available
+    currentValue = Number(currentCoinAsset.amount) * bot.realTimePrice;
+  } else if (currentCoinAsset.usdtEquivalent) {
+    // Fallback to stored USDT equivalent
+    currentValue = Number(currentCoinAsset.usdtEquivalent);
+  } else {
+    return 0; // Can't calculate profit without a value
+  }
+  
+  return currentValue - Number(bot.manualBudgetAmount);
+};
+
+// Calculate profit percentage
+const calculateProfitPercentage = (bot) => {
+  if (!bot.manualBudgetAmount || Number(bot.manualBudgetAmount) === 0) return 0;
+  
+  const profit = calculateProfit(bot);
+  return (profit / Number(bot.manualBudgetAmount)) * 100;
+};
+
 // Function to fetch real-time prices for all bots
 const fetchRealTimePrices = async (bots) => {
   if (!bots || !bots.length) return [];
@@ -507,8 +540,9 @@ function BotList() {
                             )}
                           </div>
                           {bot.botAssets && bot.botAssets.some(asset => asset.coin === bot.currentCoin) && (
+                            <div className="d-flex flex-column align-items-end">
                             <div 
-                              className="px-2 py-1 rounded" 
+                              className="px-2 py-1 rounded mb-1" 
                               style={{
                                 background: 'linear-gradient(135deg, #0d6efd, #0dcaf0)',
                                 color: 'white',
@@ -523,8 +557,40 @@ function BotList() {
                                 `$${(bot.realTimePrice * Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount)).toFixed(2)}` :
                                 'Updating...'  // Show 'Updating...' when real-time price isn't available yet
                               }
-                              
                             </div>
+                            {bot.takeProfitPercentage !== null && bot.takeProfitPercentage !== undefined && (
+                              <div 
+                                className="px-2 py-1 rounded mb-1" 
+                                style={{
+                                  background: 'linear-gradient(135deg, #f6c23e, #ffc107)',
+                                  color: 'white',
+                                  fontWeight: 'bold',
+                                  fontSize: '0.75rem',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                  border: '1px solid rgba(255,255,255,0.2)'
+                                }}
+                                title="Take Profit Target"
+                              >
+                                TP: {bot.takeProfitPercentage}%
+                              </div>
+                            )}
+                            {bot.realTimePrice && bot.botAssets.find(asset => asset.coin === bot.currentCoin) && bot.manualBudgetAmount ? (
+                              <div 
+                                className="px-2 py-1 rounded" 
+                                style={{
+                                  background: calculateProfit(bot) >= 0 ? 'linear-gradient(135deg, #1cc88a, #20c997)' : 'linear-gradient(135deg, #e74a3b, #e83e8c)',
+                                  color: 'white',
+                                  fontWeight: 'bold',
+                                  fontSize: '0.75rem',
+                                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                  border: '1px solid rgba(255,255,255,0.2)'
+                                }}
+                                title="Profit/Loss compared to initial budget"
+                              >
+                                {calculateProfit(bot) >= 0 ? '+' : ''}{calculateProfit(bot).toFixed(2)} ({calculateProfitPercentage(bot).toFixed(2)}%)
+                              </div>
+                            ) : null}
+                          </div>
                           )}
                         </div>
                       ) : (
