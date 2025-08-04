@@ -95,6 +95,7 @@ const calculateProfitPercentage = (bot) => {
 
 // Function to fetch real-time prices for all bots
 const fetchRealTimePrices = async (bots) => {
+  
   if (!bots || !bots.length) return [];
   
   const updatedBots = [...bots];
@@ -103,7 +104,7 @@ const fetchRealTimePrices = async (bots) => {
   const botPromises = updatedBots.map(async (bot) => {
     // Skip if no current coin or if it's a stablecoin (assume 1:1 with USDT)
     if (!bot.currentCoin || ['USDT', 'USDC', 'BUSD', 'DAI'].includes(bot.currentCoin)) {
-      return bot;
+      return {...bot,realTimePrice:1};
     }
     
     try {
@@ -115,6 +116,7 @@ const fetchRealTimePrices = async (bots) => {
       
       // Fetch from API if not in cache
       const priceData = await fetchRealTimePrice(bot.currentCoin);
+      console.log(priceData);
       if (priceData && priceData.price) {
         priceCache.set(bot.currentCoin, priceData.price);
         bot.realTimePrice = priceData.price;
@@ -553,6 +555,7 @@ function BotList() {
                               }}
                               title="USDT Equivalent Value"
                             >
+                              {console.log(bot)}
                               {bot.realTimePrice && bot.botAssets.find(asset => asset.coin === bot.currentCoin) ?
                                 `$${(bot.realTimePrice * Number(bot.botAssets.find(asset => asset.coin === bot.currentCoin).amount)).toFixed(2)}` :
                                 'Updating...'  // Show 'Updating...' when real-time price isn't available yet

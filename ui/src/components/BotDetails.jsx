@@ -407,7 +407,7 @@ function BotDetails({ bot, onClose }) {
                                 </div>
                                 <div className="coin-detail-value">
                                   <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
-                                    {state.priceSource === 'three_commas' ? 'Three Commas' : 'CoinGecko'}
+                                    {state.priceSource === '3commas' ? 'Three Commas' : 'CoinGecko'}
                                   </h4>
                                   {state.priceSourceStatus && (
                                     <div className="mt-2">
