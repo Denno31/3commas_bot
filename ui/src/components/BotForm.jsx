@@ -150,17 +150,26 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
       return;
     }
 
+    // Convert snake_case to camelCase for backend compatibility
     const processedData = {
       ...(editBot && { id: editBot.id }),
-      ...formData,
+      name: formData.name,
       coins: Array.isArray(formData.coins) 
         ? formData.coins 
         : formData.coins.split(',').map(c => c.trim()),
       threshold_percentage: parseFloat(formData.threshold_percentage),
       check_interval: parseInt(formData.check_interval),
-      account_id: formData.account_id.toString()
+      initial_coin: formData.initial_coin,
+      account_id: formData.account_id.toString(),
+      price_source: formData.price_source,
+      preferred_stablecoin: formData.preferred_stablecoin,
+      allocation_percentage: formData.allocation_percentage ? parseFloat(formData.allocation_percentage) : undefined,
+      manual_budget_amount: formData.manual_budget_amount ? parseFloat(formData.manual_budget_amount) : undefined,
+      commission_rate: parseFloat(formData.commission_rate),
+      enabled: formData.enabled
     };
 
+    console.log('Submitting bot data:', processedData);
     onSubmit(processedData);
     if (!editBot) {
       setFormData({

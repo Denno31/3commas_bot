@@ -30,6 +30,8 @@ function PriceHistory({ botId }) {
   const [error, setError] = useState(null);
   const [processedCoins, setProcessedCoins] = useState({});
   const chartRef = useRef(null);
+  // New state to toggle between chart and table views - default to table view
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'chart'
 
   useEffect(() => {
     loadPriceHistory();
@@ -128,118 +130,146 @@ function PriceHistory({ botId }) {
 
       {chartData && Object.keys(processedData).length > 0 ? (
         <>
-          <Card className="mb-4">
-            <Card.Body>
-              <div style={{ height: '400px' }}>
-            <Line
-              ref={chartRef}
-              data={chartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  x: {
-                    grid: {
-                      display: true,
-                      drawOnChartArea: true,
-                      drawTicks: true,
-                    },
-                    ticks: {
-                      maxTicksLimit: 8, // Limit number of ticks to reduce clutter
-                      maxRotation: 0,   // Don't rotate labels
-                      autoSkip: true,   // Skip labels that would overlap
-                      callback: function(value, index, ticks) {
-                        const date = new Date(processedData[Object.keys(processedData)[0]].timestamps[value]);
-                        // Format based on data points density
-                        if (ticks.length > 12) {
-                          return `${date.getHours()}:00`;
-                        } else {
-                          return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+          {/* View mode toggle */}
+          <div className="d-flex mb-3">
+            <div className="btn-group" role="group" aria-label="View mode">
+              <button 
+                type="button" 
+                className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setViewMode('table')}
+              >
+                <i className="bi bi-table me-1"></i>
+                Table
+              </button>
+              <button 
+                type="button" 
+                className={`btn ${viewMode === 'chart' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setViewMode('chart')}
+              >
+                <i className="bi bi-bar-chart-line me-1"></i>
+                Chart
+              </button>
+            </div>
+          </div>
+
+          {/* Chart view */}
+          {viewMode === 'chart' && (
+            <Card className="mb-4">
+              <Card.Body>
+                <div style={{ height: '400px' }}>
+                  <Line
+                    ref={chartRef}
+                    data={chartData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                        x: {
+                          grid: {
+                            display: true,
+                            drawOnChartArea: true,
+                            drawTicks: true,
+                          },
+                          ticks: {
+                            maxTicksLimit: 8, // Limit number of ticks to reduce clutter
+                            maxRotation: 0,   // Don't rotate labels
+                            autoSkip: true,   // Skip labels that would overlap
+                            callback: function(value, index, ticks) {
+                              const date = new Date(processedData[Object.keys(processedData)[0]].timestamps[value]);
+                              // Format based on data points density
+                              if (ticks.length > 12) {
+                                return `${date.getHours()}:00`;
+                              } else {
+                                return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                              }
+                            }
+                          },
+                        },
+                        y: {
+                          beginAtZero: false,
+                          ticks: {
+                            callback: value => `$${value.toLocaleString()}`
+                          },
+                          grid: {
+                            display: true,
+                          }
+                        }
+                      },
+                      layout: {
+                        padding: {
+                          top: 20,
+                          right: 20,
+                          bottom: 30,
+                          left: 20
+                        }
+                      },
+                      plugins: {
+                        tooltip: {
+                          callbacks: {
+                            label: context => `${context.dataset.label}: $${context.parsed.y.toLocaleString()}`
+                          }
+                        },
+                        legend: {
+                          display: true,
+                          position: 'top',
+                          labels: {
+                            boxWidth: 12,
+                            usePointStyle: true,
+                            padding: 20
+                          }
+                        },
+                        title: {
+                          display: true,
+                          text: 'Price History (Last 24 Hours)',
+                          font: {
+                            size: 16
+                          },
+                          padding: {
+                            top: 10,
+                            bottom: 20
+                          }
                         }
                       }
-                    },
-                  },
-                  y: {
-                    beginAtZero: false,
-                    ticks: {
-                      callback: value => `$${value.toLocaleString()}`
-                    },
-                    grid: {
-                      display: true,
-                    }
-                  }
-                },
-                layout: {
-                  padding: {
-                    top: 20,
-                    right: 20,
-                    bottom: 30,
-                    left: 20
-                  }
-                },
-                plugins: {
-                  tooltip: {
-                    callbacks: {
-                      label: context => `${context.dataset.label}: $${context.parsed.y.toLocaleString()}`
-                    }
-                  },
-                  legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                      boxWidth: 12,
-                      usePointStyle: true,
-                      padding: 20
-                    }
-                  },
-                  title: {
-                    display: true,
-                    text: 'Price History (Last 24 Hours)',
-                    font: {
-                      size: 16
-                    },
-                    padding: {
-                      top: 10,
-                      bottom: 20
-                    }
-                  }
-                }
-              }}
-            />
-              </div>
-            </Card.Body>
-          </Card>
+                    }}
+                  />
+                </div>
+              </Card.Body>
+            </Card>
+          )}
           
-          <Table className="mt-4" hover>
-            <thead>
-              <tr>
-                <th>Coin</th>
-                <th>Current Price</th>
-                <th>24h Change</th>
-                <th>Last Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(processedData).map(([coin, data]) => {
-                const currentPrice = data.prices[data.prices.length - 1];
-                const prevPrice = data.prices[0];
-                const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
-                
-                return (
-                  <tr key={coin}>
-                    <td>{coin}</td>
-                    <td>${currentPrice.toLocaleString()}</td>
-                    <td className={priceChange >= 0 ? 'text-success' : 'text-danger'}>
-                      {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-                    </td>
-                    <td>{typeof data.timestamps[data.timestamps.length - 1] === 'string' 
-                        ? new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString() 
-                        : new Date(Date.parse(data.timestamps[data.timestamps.length - 1])).toLocaleString()}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
+          {/* Table view - always shown if in table mode */}
+          {viewMode === 'table' && (
+            <Table hover>
+              <thead>
+                <tr>
+                  <th>Coin</th>
+                  <th>Current Price</th>
+                  <th>24h Change</th>
+                  <th>Last Updated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(processedData).map(([coin, data]) => {
+                  const currentPrice = data.prices[data.prices.length - 1];
+                  const prevPrice = data.prices[0];
+                  const priceChange = ((currentPrice - prevPrice) / prevPrice) * 100;
+                  
+                  return (
+                    <tr key={coin}>
+                      <td>{coin}</td>
+                      <td>${currentPrice.toLocaleString()}</td>
+                      <td className={priceChange >= 0 ? 'text-success' : 'text-danger'}>
+                        {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                      </td>
+                      <td>{typeof data.timestamps[data.timestamps.length - 1] === 'string' 
+                          ? new Date(data.timestamps[data.timestamps.length - 1]).toLocaleString() 
+                          : new Date(Date.parse(data.timestamps[data.timestamps.length - 1])).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
         </>
       ) : (
         <p className="text-center text-muted">No price data available</p>

@@ -27,6 +27,8 @@ const RelativeDeviationChart = ({ botId }) => {
   const [tabDisplayType, setTabDisplayType] = useState(0);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [autoRefreshIntervalId, setAutoRefreshIntervalId] = useState(null);
+  // New state to toggle between chart and table views - default to table view
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'chart'
 
   // Time range options in milliseconds
   const timeRanges = {
@@ -614,22 +616,47 @@ const RelativeDeviationChart = ({ botId }) => {
   return (
     <Card className="mb-4">
       <Card.Body>
-        <h5 className="mb-3">Relative Deviation Chart</h5>
+        <h5 className="mb-3">Relative Deviation Data</h5>
         
         <div className="d-flex flex-wrap justify-content-between mb-3">
-          <div>
-            <Tabs
-              activeKey={tabDisplayType}
-              onSelect={(key) => setTabDisplayType(key)}
-              className="mb-3"
-            >
-              <Tab eventKey={0} title="Time Series">
-                {/* No additional content needed here, we'll render the chart based on the selected tab */}
-              </Tab>
-              <Tab eventKey={1} title="Heatmap">
-                {/* No additional content needed here, we'll render the chart based on the selected tab */}
-              </Tab>
-            </Tabs>
+          <div className="d-flex align-items-center">
+            {/* Toggle between chart and table views */}
+            <Form.Group className="me-3" controlId="viewMode">
+              <div className="btn-group" role="group" aria-label="View mode">
+                <button 
+                  type="button" 
+                  className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setViewMode('table')}
+                >
+                  <i className="bi bi-table me-1"></i>
+                  Table
+                </button>
+                <button 
+                  type="button" 
+                  className={`btn ${viewMode === 'chart' ? 'btn-primary' : 'btn-outline-primary'}`}
+                  onClick={() => setViewMode('chart')}
+                >
+                  <i className="bi bi-bar-chart-line me-1"></i>
+                  Chart
+                </button>
+              </div>
+            </Form.Group>
+            
+            {/* Only show chart tabs when chart view is active */}
+            {viewMode === 'chart' && (
+              <Tabs
+                activeKey={tabDisplayType}
+                onSelect={(key) => setTabDisplayType(key)}
+                className="mb-0"
+              >
+                <Tab eventKey={0} title="Time Series">
+                  {/* No additional content needed here, we'll render the chart based on the selected tab */}
+                </Tab>
+                <Tab eventKey={1} title="Heatmap">
+                  {/* No additional content needed here, we'll render the chart based on the selected tab */}
+                </Tab>
+              </Tabs>
+            )}
           </div>
           
           <div className="d-flex flex-wrap align-items-center">
@@ -697,28 +724,39 @@ const RelativeDeviationChart = ({ botId }) => {
           </div>
         </div>
         
-        <div style={{ height: '400px', width: '100%' }}>
-          {tabDisplayType == 0 ? renderLineChart() : renderHeatmap()}
-        </div>
+        {/* Conditional rendering based on view mode */}
+        {viewMode === 'chart' && (
+          <>
+            <div style={{ height: '400px', width: '100%' }}>
+              {tabDisplayType == 0 ? renderLineChart() : renderHeatmap()}
+            </div>
+            
+            <Card.Text className="text-muted mt-3 small">
+              <i className="bi bi-info-circle me-1"></i>
+              The chart shows relative deviations between coin pairs, helping identify potential trade opportunities.
+              Positive values indicate the target coin is performing better than the base coin.
+            </Card.Text>
+          </>
+        )}
         
-        <Card.Text className="text-muted mt-3 small">
-          <i className="bi bi-info-circle me-1"></i>
-          The chart shows relative deviations between coin pairs, helping identify potential trade opportunities.
-          Positive values indicate the target coin is performing better than the base coin.
-        </Card.Text>
+        {/* Deviation Data Table - always shown if in table mode */}
+        {viewMode === 'table' && (
+          <>
+            <h5 className="mt-3 mb-3">Deviation Data Table</h5>
+            {renderDeviationTable()}
+            <Card.Text className="text-muted mt-2 small">
+              <i className="bi bi-info-circle me-1"></i>
+              This table shows the current relative deviations between coin pairs. A positive deviation means the target coin 
+              is outperforming the base coin, suggesting a potential opportunity to switch.
+            </Card.Text>
+          </>
+        )}
         
-        {/* Deviation Data Table */}
-        <h5 className="mt-4 mb-3">Deviation Data Table</h5>
-        {renderDeviationTable()}
-        <Card.Text className="text-muted mt-2 small">
-          <i className="bi bi-info-circle me-1"></i>
-          This table shows the current relative deviations between coin pairs. A positive deviation means the target coin 
-          is outperforming the base coin, suggesting a potential opportunity to switch.
-        </Card.Text>
         <div className="mt-3">
           <p className="text-muted small">
-            The chart shows relative deviations between coin pairs, helping identify potential trade opportunities.
-            Negative values indicate the target coin is underperforming the base coin and might be a good purchase candidate.
+            {viewMode === 'chart' ? 
+              "The chart shows relative deviations between coin pairs, helping identify potential trade opportunities. Negative values indicate the target coin is underperforming the base coin and might be a good purchase candidate." :
+              "Negative deviation values indicate the target coin is underperforming the base coin and might be a good purchase candidate."}
           </p>
         </div>
       </Card.Body>
