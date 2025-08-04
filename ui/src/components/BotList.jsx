@@ -114,7 +114,6 @@ function BotList() {
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  console.log(bots)
   // Memoize loadBots to prevent recreation on every render
   const loadBots = useCallback(async () => {
     setIsLoading(true);
