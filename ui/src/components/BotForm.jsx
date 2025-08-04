@@ -171,8 +171,6 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
       commission_rate: parseFloat(formData.commission_rate),
       enabled: formData.enabled
     };
-
-    console.log('Submitting bot data:', processedData);
     onSubmit(processedData);
     if (!editBot) {
       setFormData({
