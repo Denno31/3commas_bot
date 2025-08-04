@@ -17,6 +17,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
     preferred_stablecoin: 'USDT',
     allocation_percentage: '',
     manual_budget_amount: '',
+    take_profit_percentage: '',
     commission_rate: '0.2',
     enabled: true
   });
@@ -47,6 +48,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
           preferred_stablecoin: editBot.preferredStablecoin || 'USDT',
           allocation_percentage: editBot.allocationPercentage || '',
           manual_budget_amount: editBot.manualBudgetAmount || '',
+          take_profit_percentage: editBot.takeProfitPercentage || '',
           commission_rate: editBot.commissionRate || '0.2',
           enabled: editBot.enabled
         });
@@ -165,6 +167,7 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
       preferred_stablecoin: formData.preferred_stablecoin,
       allocation_percentage: formData.allocation_percentage ? parseFloat(formData.allocation_percentage) : undefined,
       manual_budget_amount: formData.manual_budget_amount ? parseFloat(formData.manual_budget_amount) : undefined,
+      take_profit_percentage: formData.take_profit_percentage ? parseFloat(formData.take_profit_percentage) : undefined,
       commission_rate: parseFloat(formData.commission_rate),
       enabled: formData.enabled
     };
@@ -510,6 +513,22 @@ const BotForm = ({ show, onHide, onSubmit, editBot = null }) => {
             />
             <Form.Text className="text-muted">
               Optional: Set a specific budget amount in your preferred stablecoin
+            </Form.Text>
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Take Profit Percentage (%)</Form.Label>
+            <Form.Control
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              placeholder="Enter take profit percentage (0-100)"
+              value={formData.take_profit_percentage}
+              onChange={(e) => setFormData({ ...formData, take_profit_percentage: e.target.value })}
+            />
+            <Form.Text className="text-muted">
+              Optional: Set a percentage at which the bot will sell to take profit
             </Form.Text>
           </Form.Group>
 

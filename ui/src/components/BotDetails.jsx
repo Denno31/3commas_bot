@@ -146,7 +146,7 @@ function BotDetails({ bot, onClose }) {
     setLoadingAssets(true);
     try {
       const {availableCoins,account} = await fetchAvailableCoins(accountId);
-      console.log({availableCoins, account});
+     
       // Filter for coins with balances or coins related to the bot
       const relevantAssets = availableCoins.filter(coin => {
         const hasBalance = Number(coin.amount) > 0;
@@ -480,6 +480,28 @@ function BotDetails({ bot, onClose }) {
                                 <div className="coin-detail-value">
                                   <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
                                     {bot.thresholdPercentage || 0}%
+                                  </h4>
+                                </div>
+                              </Card.Body>
+                            </Card>
+                          </div>
+                          
+                          {/* Take Profit Percentage Card */}
+                          <div className="col-xl-6 col-md-12">
+                            <Card className="coin-detail-card h-100" style={{ 
+                              borderLeft: '4px solid #1cc88a',
+                              transition: 'all 0.3s'
+                            }}>
+                              <Card.Body>
+                                <div className="d-flex align-items-center mb-2">
+                                  <i className="bi bi-graph-up-arrow fs-3 me-2 text-success"></i>
+                                  <h6 className="text-success fw-bold mb-0">Take Profit</h6>
+                                </div>
+                                <div className="coin-detail-value">
+                                  <h4 className="mb-0 mt-2" style={{ fontWeight: '600', color: '#3a3b45' }}>
+                                    {bot.takeProfitPercentage !== null && bot.takeProfitPercentage !== undefined ? 
+                                      `${bot.takeProfitPercentage}%` : 'Not set'}
+                                      {console.log(bot)}
                                   </h4>
                                 </div>
                               </Card.Body>
