@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Form, Button, Alert, Container, Card, Row, Col } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 import { login, register } from '../api';
 import './Login.css';
 
-const Login = ({ onLogin }) => {
+const Login = () => {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +36,8 @@ const Login = ({ onLogin }) => {
         // Store username in localStorage
         localStorage.setItem('username', formData.username);
       }
-      onLogin();
+      // Redirect to the main app after successful login
+      navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -137,6 +140,14 @@ const Login = ({ onLogin }) => {
                 >
                   {isLogin ? "Don't have an account? Register" : 'Already have an account? Login'}
                 </Button>
+                
+                {isLogin && (
+                  <div className="mt-2">
+                    <Link to="/forgot-password" className="text-decoration-none">
+                      <small>Forgot password?</small>
+                    </Link>
+                  </div>
+                )}
               </div>
             </Card.Body>
           </Card>

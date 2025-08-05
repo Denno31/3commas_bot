@@ -46,6 +46,42 @@ export async function register(email, username, password) {
   return response.json();
 }
 
+// Request a password reset email
+export async function requestPasswordReset(email) {
+  const response = await fetch(`${API_URL}/api/password-reset-request`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to request password reset');
+  }
+
+  return response.json();
+}
+
+// Reset password with token
+export async function resetPassword(token, password) {
+  const response = await fetch(`${API_URL}/api/password-reset`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, password })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Password reset failed');
+  }
+
+  return response.json();
+}
+
 export function logout() {
   localStorage.removeItem('token');
 }
